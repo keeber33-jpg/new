@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Партнёр CRM — автономная веб-версия</title>
+<style>
+:root{--navy:#172b4d;--blue:#2866a6;--bg:#f3f6fa;--line:#e1e7ef;--text:#1d2939;--muted:#667085;--red:#c0392b;--green:#16845b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,sans-serif}
+header{background:var(--navy);color:white;padding:15px 22px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.brand{font-size:21px;font-weight:800;letter-spacing:1px;white-space:nowrap}.brand span{color:#83b8f0}
+nav{display:flex;gap:6px;flex-wrap:wrap}nav button{background:transparent;color:#eaf1f9;padding:9px 11px}nav button.active,nav button:hover{background:#2d4568}
+.headright{margin-left:auto;display:flex;gap:8px;align-items:center}
+button,.btn{border:0;border-radius:6px;background:var(--blue);color:white;padding:10px 14px;font-weight:600;cursor:pointer;font-size:13px}
+button:hover,.btn:hover{filter:brightness(.93)}button.secondary,.btn.secondary{background:#e9eef5;color:#344054}button.danger{background:#fff0ef;color:var(--red)}
+main{max-width:none;width:100%;margin:26px auto;padding:0 22px}.pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+h1{font-size:26px;margin:0}h2{font-size:18px;margin:0 0 15px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.stat,.panel{background:white;border:1px solid var(--line);border-radius:10px;padding:17px;box-shadow:0 2px 8px #14213d08}
+.stat div{color:var(--muted);margin-bottom:9px}.stat strong{font-size:25px;color:var(--navy)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:17px}
+table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--muted);background:#f8fafc}
+table tbody tr:nth-child(even):not(.task-overdue):not(.task-today):not(.task-soon):not(.deal-won):not(.deal-lost){background:#f3f4f6}table{table-layout:fixed}table th{position:relative;user-select:none}table th .global-col-resizer{position:absolute;right:0;top:0;width:8px;height:100%;cursor:col-resize;z-index:2}table:not(#table_clients) th .global-col-resizer:hover{background:#8bb8e8}table td{overflow:hidden;text-overflow:ellipsis}tr:last-child td{border-bottom:0}
+.scroll{overflow:auto}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.toolbar input{max-width:300px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cfd7e3;border-radius:6px;font:14px Arial;background:#fff;color:var(--text)}
+.toolbar input{width:260px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px}.formgrid label,.modal label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:#344054}.formgrid textarea,.modal textarea{min-height:80px}.actions{display:flex;gap:6px}.actions button{padding:6px 9px;font-size:12px}
+.badge{display:inline-block;padding:4px 7px;border-radius:20px;background:#edf3fa;color:#34577d;font-size:12px}.muted{color:#98a2b3}.notice{padding:12px 14px;background:#fff7df;border:1px solid #f1dfa6;border-radius:8px;margin:0 0 18px;color:#69551d;line-height:1.45}
+.modalback{position:fixed;inset:0;background:#10182888;display:none;align-items:center;justify-content:center;padding:18px;z-index:5}.modalback.show{display:flex}.modal{background:white;border-radius:12px;width:min(760px,100%);max-height:92vh;overflow:auto;padding:22px}.modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.modalfoot{display:flex;gap:8px;margin-top:18px}
+.deal-won{background:#e8f6ee!important}.deal-won td{border-bottom-color:#c7e8d4}.deal-lost{background:#fff0ef!important}.deal-lost td{border-bottom-color:#f3c7c3}.task-overdue{background:#fff0ef!important;border-left:4px solid #c0392b}.task-today{background:#fff4e5!important;border-left:4px solid #e58a00}.task-soon{background:#eaf5ff!important;border-left:4px solid #3994d6}.contact-editor{grid-column:1/-1;border:1px solid var(--line);border-radius:8px;padding:12px}.contact-row{display:grid;grid-template-columns:1.2fr 1fr 1.2fr 1fr auto;gap:7px;margin:8px 0;align-items:center}.contact-row button{padding:7px}.additional-contacts{grid-column:1/-1;border:1px solid var(--line);border-radius:8px;padding:12px}.additional-contacts h3{margin:0 0 8px}.additional-contacts .muted{font-size:12px;margin-bottom:8px}.task-actions{display:flex;gap:6px;margin-top:7px}.task-actions button{padding:6px 9px;font-size:12px}.empty{text-align:center;padding:25px;color:var(--muted)}.flash{padding:10px 13px;background:#e8f6ef;color:#176b4c;border-radius:7px;margin-bottom:14px;display:none}
+footer{text-align:center;color:#98a2b3;padding:26px}
+.hidden{display:none!important}
+#clients{width:100%;min-width:0}
+#clients .panel.scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden}
+#table_clients{table-layout:fixed;width:max-content;min-width:100%;max-width:none}
+#table_clients th,#table_clients td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#table_clients th{position:relative;user-select:none}
+#table_clients th .col-resizer{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}
+#table_clients th .col-resizer:hover{background:#8bb8e8}
+#table_clients th.dragover{outline:2px dashed var(--blue);outline-offset:-3px}
+#table_clients .client-address{width:180px;max-width:180px}
+#table_clients .client-notes{width:240px;max-width:240px}
+/* Колонка действий закреплена справа, чтобы кнопка удаления всегда оставалась доступной */
+#table_clients th[data-actions],#table_clients td:last-child{position:sticky;right:0;z-index:2;width:230px;min-width:230px;max-width:230px;background:#fff;overflow:visible;text-overflow:clip;white-space:normal;box-shadow:-5px 0 8px #14213d0d}
+#table_clients th[data-actions]{z-index:3;background:#f8fafc}
+#table_clients td:last-child .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#table_clients td:last-child .actions button{white-space:nowrap}
+#clientCardBack{z-index:8}
+.client-card-section{border:1px solid var(--line);border-radius:8px;padding:13px;margin:12px 0}
+.client-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.client-card-grid div{min-width:0;overflow-wrap:anywhere}
+.client-card-grid small{display:block;color:var(--muted);margin-bottom:4px}
+.client-task{padding:10px 0;border-bottom:1px solid var(--line)}
+.client-task:last-child{border-bottom:0}
+.client-history{font-size:13px;color:#475467;margin-top:5px;white-space:normal}
+@media(max-width:700px){.client-card-grid{grid-template-columns:1fr}}
+
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}header{gap:12px}.headright{margin-left:0}}
+@media(max-width:700px){.order-client-row{grid-template-columns:1fr 1fr!important}.order-client-row button{grid-column:1/-1}.contact-row{grid-template-columns:1fr 1fr}.contact-row button{grid-column:1/-1}}\n@media(max-width:560px){main{padding:0 12px}.grid,.formgrid,.modalgrid{grid-template-columns:1fr}h1{font-size:22px}.headright{width:100%}.headright button{flex:1}}
+/* Компактный рабочий стол */
+#home #stats{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+#home #stats .stat{padding:10px 12px;border-radius:8px;min-width:0}
+#home #stats .stat div{font-size:12px;line-height:1.25;margin-bottom:5px}
+#home #stats .stat strong{font-size:19px;line-height:1.2;overflow-wrap:anywhere}
+#home .two{grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}
+#home .two>.panel{padding:13px;min-width:0}
+#home .two h2{font-size:16px;margin-bottom:10px}
+#home #upcoming>div{padding:8px!important;margin:5px 0!important}
+@media(max-width:1100px){#home #stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){#home .two{grid-template-columns:1fr}}
+@media(max-width:560px){#home #stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+body:not(.crm-authenticated) > header,
+body:not(.crm-authenticated) > main,
+body:not(.crm-authenticated) > footer { display:none !important; }
+#crmLoginGate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#172b4d,#284d78)}
+#crmLoginGate .login-card{width:min(410px,100%);background:#fff;border-radius:14px;padding:30px;box-shadow:0 18px 60px #0004}
+#crmLoginGate h1{font-size:24px;color:#172b4d;margin:0 0 8px}
+#crmLoginGate p{color:#667085;line-height:1.5;margin:0 0 22px}
+#crmLoginGate label{display:block;font-weight:600;color:#344054;margin-bottom:8px}
+#crmLoginGate input{width:100%;padding:12px;border:1px solid #cfd7e3;border-radius:7px;font-size:16px;margin-bottom:14px}
+#crmLoginGate button{width:100%;padding:12px;font-size:14px}
+#crmLoginError{display:none;color:#c0392b;font-size:13px;margin:0 0 12px}
+
+</style>
+</head>
+<body>
+
+<div id="crmLoginGate">
+ <form class="login-card" id="crmLoginForm">
+  <h1>ПАРТНЁР CRM</h1>
+  <p>Для доступа к системе введите пароль.</p>
+  <label for="crmPassword">Пароль</label>
+  <input id="crmPassword" type="password" autocomplete="current-password" autofocus required>
+  <div id="crmLoginError">Неверный пароль. Попробуйте ещё раз.</div>
+  <button type="submit">Войти в CRM</button>
+ </form>
+</div>
+<script>
+(function(){
+ const CRM_PASSWORD = "0000";
+ const gate = document.getElementById("crmLoginGate");
+ function unlock(){
+   document.body.classList.add("crm-authenticated");
+   gate.style.display = "none";
+ }
+ if(sessionStorage.getItem("partner_crm_authenticated") === "1") unlock();
+ document.getElementById("crmLoginForm").addEventListener("submit", function(e){
+   e.preventDefault();
+   const value = document.getElementById("crmPassword").value;
+   if(value === CRM_PASSWORD){
+     sessionStorage.setItem("partner_crm_authenticated","1");
+     document.getElementById("crmLoginError").style.display = "none";
+     unlock();
+   } else {
+     document.getElementById("crmLoginError").style.display = "block";
+     document.getElementById("crmPassword").value = "";
+     document.getElementById("crmPassword").focus();
+   }
+ });
+})();
+</script>
+
+<header>
+ <div class="brand">ПАРТНЁР <span>CRM</span></div>
+ <nav id="nav">
+  <button data-tab="home" class="active">Главная</button><button data-tab="leads">Лиды</button><button data-tab="clients">Клиенты</button><button data-tab="suppliers">Поставщики</button><button data-tab="orders">Заказы</button><button data-tab="shipments">Отгрузки</button><button data-tab="tasks">Задачи</button><button data-tab="debts">Дебиторка</button><button data-tab="reports">Отчёты</button>
+ </nav>
+ <div class="headright"><button class="secondary" onclick="exportData()">Экспорт базы</button><button class="secondary" onclick="crmLock()">Заблокировать</button><button class="secondary" onclick="document.getElementById('importFile').click()">Импорт базы</button><input id="importFile" type="file" accept=".json,application/json" class="hidden"></div>
+</header>
+<main>
+
+<div id="flash" class="flash"></div>
+<section id="home" class="view">
+ <div class="pagehead"><h1>Рабочий стол</h1><button onclick="openForm('leads')">+ Новый лид</button></div>
+ <div class="grid" id="stats"></div>
+ <div class="panel" id="backupPanel" style="margin-top:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+   <div><h2 style="margin-bottom:6px">Автоматическое резервное копирование</h2><div id="backupStatus" class="muted">Проверка резервных копий…</div></div>
+   <button class="secondary" onclick="downloadLatestAutoBackup()">Скачать последнюю копию</button>
+  </div>
+ </div>
+ <div class="two"><div class="panel"><h2>Ближайшие и просроченные задачи</h2><div id="upcoming"></div></div><div class="panel"><h2>История</h2><div id="recent"></div></div></div>
+</section>
+<section id="leads" class="view hidden"></section><section id="clients" class="view hidden"></section><section id="suppliers" class="view hidden"></section><section id="deals" class="view hidden"></section>
+<section id="orders" class="view hidden"></section><section id="tasks" class="view hidden"></section><section id="shipments" class="view hidden"></section>
+<section id="debts" class="view hidden"></section><section id="reports" class="view hidden"></section>
+</main>
+<footer>ООО «Партнёр» · автономная веб-CRM · данные хранятся в этом браузере</footer>
+<div class="modalback" id="modalback"><div class="modal"><div class="modalhead"><h2 id="modalTitle">Добавить</h2><button class="secondary" onclick="closeForm()">Закрыть</button></div><form id="recordForm"><div class="modalgrid" id="formFields"></div><div class="modalfoot"><button type="submit">Сохранить</button><button type="button" class="secondary" onclick="closeForm()">Отмена</button></div></form></div></div>
+<div class="modalback" id="moveTaskModal"><div class="modal" style="width:min(560px,100%)">
+ <div class="modalhead"><h2>Перенос задачи</h2><button type="button" class="secondary" onclick="closeMoveTask()">Закрыть</button></div>
+ <form id="moveTaskForm">
+  <div class="modalgrid">
+   <label>Новая дата выполнения<input id="moveTaskDate" name="dueDate" type="date" required></label>
+   <label style="grid-column:1/-1">Комментарий к переносу<textarea id="moveTaskComment" name="comment" placeholder="Укажите причину переноса или что изменилось..." required></textarea></label>
+  </div>
+  <div class="modalfoot"><button type="submit">Сохранить перенос</button><button type="button" class="secondary" onclick="closeMoveTask()">Отмена</button></div>
+ </form>
+</div></div>
+<div class="modalback" id="clientCardBack"><div class="modal" style="width:min(900px,100%)"><div class="modalhead"><h2 id="clientCardTitle">Карточка компании</h2><button class="secondary" onclick="closeClientCard()">Закрыть</button></div><div id="clientCardContent"></div></div></div>
+
+<div class="modalback" id="orderModal"><div class="modal" style="width:min(900px,100%)"><div class="modalhead"><h2 id="orderModalTitle">Новый заказ / постановка в производство</h2><button type="button" class="secondary" onclick="closeOrderModal()">Закрыть</button></div>
+<form id="orderForm"><div class="modalgrid">
+<label>Ассортимент / продукция<input id="orderProduct" name="product" list="orderProductsList" placeholder="Выберите или введите наименование" required><datalist id="orderProductsList"></datalist></label>
+<label>Предполагаемая дата постановки в производство<input name="productionDate" type="date" required></label>
+<label>Наименование поставщика<input name="supplierName" type="text" placeholder="Укажите поставщика"></label>
+<div style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>График оплаты поставщику</b><button type="button" class="secondary" onclick="addOrderPaymentRow()">+ Добавить срок оплаты</button></div><div class="muted" style="margin:5px 0 8px">Укажите даты и суммы платежей. Если срок один — сумма заполнится автоматически. При нескольких сроках последний платёж автоматически рассчитает остаток.</div><div id="orderPaymentsList"></div></div>
+<label>Закупочная стоимость бутылки у поставщика, ₽<input id="orderSupplierPrice" name="supplierPrice" type="number" min="0" step="0.01" placeholder="Цена за 1 бутылку" oninput="updateOrderTotal()" required></label>
+<label style="grid-column:1/-1">Комментарий к производственному заказу<textarea name="notes" placeholder="Партия, особенности, сроки и прочие условия"></textarea></label>
+</div><div class="contact-editor" style="margin-top:15px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>Потребность клиентов</b><div class="muted">Добавьте несколько клиентов и укажите необходимое количество каждому</div></div><button type="button" class="secondary" onclick="addOrderClientRow()">+ Добавить клиента</button></div><div id="orderClientsList"></div><div style="display:flex;justify-content:flex-end;margin-top:12px;font-weight:700">Общий объём: <span id="orderTotal" style="margin:0 8px">0</span> · К оплате поставщику: <span id="orderSupplierTotal" style="margin-left:8px">0,00 ₽</span></div></div>
+<div class="modalfoot"><button type="submit">Сохранить заказ</button><button type="button" class="secondary" onclick="closeOrderModal()">Отмена</button></div></form></div></div>
+<script>
+function crmLock(){
+ sessionStorage.removeItem("partner_crm_authenticated");
+ document.body.classList.remove("crm-authenticated");
+ const gate=document.getElementById("crmLoginGate");
+ gate.style.display="flex";
+ document.getElementById("crmPassword").value="";
+ document.getElementById("crmPassword").focus();
+}
+const KEY='partner_crm_standalone_v1';
+const AUTO_BACKUP_KEY='partner_crm_auto_backups_v1';
+const AUTO_BACKUP_RETENTION=30;
+const emptyDB={leads:[],clients:[],suppliers:[],actions:[],deals:[],orders:[],tasks:[],shipments:[],debts:[],activities:[],supplierPayments:{}};
+let db=loadDB(), currentTab='home', editing=null, formTable=null;
+if(!Array.isArray(db.leads))db.leads=[];if(!Array.isArray(db.suppliers))db.suppliers=[];if(!Array.isArray(db.actions))db.actions=[];if(!Array.isArray(db.activities))db.activities=[];db.tasks.forEach(t=>{if(!t.taskType)t.taskType='Другое';});if(!Array.isArray(db.orders))db.orders=[];
+if(!db.supplierPayments||typeof db.supplierPayments!=='object')db.supplierPayments={};
+runDailyBackup();
+function localDateKey(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function getAutoBackups(){try{const v=JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
+function runDailyBackup(){
+ try{
+  const today=localDateKey(), backups=getAutoBackups();
+  if(!backups.some(x=>x.date===today)){
+   backups.push({date:today,createdAt:new Date().toISOString(),data:JSON.parse(JSON.stringify(db))});
+   backups.sort((a,b)=>a.date.localeCompare(b.date));
+   localStorage.setItem(AUTO_BACKUP_KEY,JSON.stringify(backups.slice(-AUTO_BACKUP_RETENTION)));
+  }
+ }catch(e){console.warn('Не удалось создать автоматическую резервную копию:',e)}
+}
+function renderBackupStatus(){
+ const el=document.getElementById('backupStatus');if(!el)return;
+ const backups=getAutoBackups(),last=backups[backups.length-1];
+ el.textContent=last
+  ? `Последняя копия: ${last.date}. Хранится копий: ${backups.length} из ${AUTO_BACKUP_RETENTION}. Новая копия создаётся автоматически при первом открытии CRM в каждый новый день.`
+  : 'Автоматические копии пока не созданы.';
+}
+function downloadLatestAutoBackup(){
+ const backups=getAutoBackups(),last=backups[backups.length-1];
+ if(!last){alert('Автоматических резервных копий пока нет');return}
+ downloadBackupObject(last.data,'partner_crm_auto_backup_'+last.date+'.json');
+}
+function downloadBackupObject(data,filename){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function loadDB(){try{return {...emptyDB,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){return structuredClone(emptyDB)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Изменения сохранены');}
+function toast(s){let e=document.getElementById('flash');e.textContent=s;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+const defs={
+leads:{title:'Лиды',singular:'лид',fields:[['company','Компания','text',true],['country','Страна'],['city','Город'],['contact','Контактное лицо'],['phone','Телефон'],['email','E-mail','email'],['manager','Менеджер'],['source','Откуда пришёл лид','leadSource'],['notes','Примечания','textarea']]},
+clients:{title:'Клиенты',singular:'клиента',fields:[['company','Компания','text',true],['country','Страна'],['city','Город'],['address','Адрес'],['contact','Контактное лицо'],['phone','Телефон'],['email','E-mail','email'],['manager','Менеджер'],['notes','Примечания','textarea']]},
+suppliers:{title:'Поставщики',singular:'поставщика',fields:[['company','Название поставщика','text',true],['country','Страна'],['city','Город'],['address','Адрес'],['contact','Контактное лицо'],['phone','Телефон'],['email','E-mail','email'],['manager','Ответственный менеджер'],['notes','Примечания','textarea']]},
+deals:{title:'Сделки',singular:'сделку',fields:[['title','Название сделки','text',true],['clientId','Клиент','client'],['manager','Менеджер'],['stage','Этап','stage'],['amount','Сумма, руб.','number'],['product','Продукция'],['volume','Объём','number'],['probability','Вероятность, %','number'],['decisionDate','Дата решения','date'],['shipmentDate','Ожидаемая отгрузка','date'],['nextStep','Следующий шаг','textarea'],['notes','Примечания','textarea']]},
+tasks:{title:'Задачи',singular:'задачу',fields:[['title','Задача','text',true],['taskType','Тип задачи','taskType'],['clientId','Клиент','client'],['leadId','Лид','lead'],['supplierId','Поставщик','supplier'],['manager','Менеджер'],['dueDate','Дата выполнения','date'],['dueTime','Время','time'],['reminderAt','Напоминание','datetime-local'],['status','Статус','taskStatus'],['notes','Примечания','textarea']]},
+shipments:{title:'Отгрузки',singular:'отгрузку',fields:[['clientId','Клиент','client'],['leadId','Лид','lead'],['supplierId','Поставщик','supplier'],['dealId','Сделка','deal'],['manager','Менеджер'],['product','Продукция'],['quantity','Количество','number'],['amount','Сумма, руб.','number'],['shipmentDate','Дата отгрузки','date'],['status','Статус','shipmentStatus'],['notes','Примечания','textarea']]},
+debts:{title:'Дебиторская задолженность',singular:'запись о долге',fields:[['clientId','Клиент','client'],['manager','Менеджер'],['invoice','Счёт / накладная'],['amount','Сумма долга, руб.','number'],['dueDate','Срок оплаты','date'],['paid','Оплачено, руб.','number'],['notes','Примечания','textarea']]}
+};
+const leadSources=['Позвонил сам','Написал на сайт компании','Написал на личную почту','Найден в интернете','Другое'];
+const taskTypes=['Созвон','Рассылка','Коммерческое предложение','Переговоры','Обратная связь','Другое'];
+const actionStatuses=['Созвон','Рассылка','Коммерческое предложение','Переговоры','Обратная связь'];
+const stages=['Новая','Контакт','Переговоры','Коммерческое предложение','Согласование','Заказ','Выиграна','Проиграна'];
+function money(v){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(v)||0)+' ₽'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function leadName(id){return db.leads.find(x=>x.id===id)?.company||'—'}
+function clientName(id){return db.clients.find(x=>x.id===id)?.company||'—'}
+function dealName(id){return db.deals.find(x=>x.id===id)?.title||'—'}
+function supplierName(id){return db.suppliers.find(x=>x.id===id)?.company||'—'}
+function taskEntityName(t){if(t.supplierId)return supplierName(t.supplierId);if(t.clientId&&clientName(t.clientId)!=='—')return clientName(t.clientId);if(t.leadId&&leadName(t.leadId)!=='—')return leadName(t.leadId);return 'Не указано'}
+function showTab(tab){currentTab=tab;document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));document.getElementById(tab).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));renderTab(tab);initResizableTables()}
+document.getElementById('nav').addEventListener('click',e=>{let b=e.target.closest('button[data-tab]');if(b)showTab(b.dataset.tab)});
+function renderAll(){renderHome();if(currentTab!=='home')renderTab(currentTab);initResizableTables()}
+let homeHistory=[];
+function openHomeHistory(index){
+ const a=homeHistory[index];if(!a)return;
+ const et=a.entityType,eid=Number(a.entityId)||0,table=a.sourceTable||'';
+ if(table==='tasks'){let t=a.taskId?db.tasks.find(x=>Number(x.id)===Number(a.taskId)):null;if(!t)t=db.tasks.find(x=>String(x.title||'')===String(a.title||'')&&((et==='client'&&Number(x.clientId)===eid)||(et==='lead'&&Number(x.leadId)===eid)||(et==='supplier'&&Number(x.supplierId)===eid)));if(!t)t=db.tasks.find(x=>String(x.title||'')===String(a.title||''));if(t){openForm('tasks',t.id);return;}}
+ if(et==='client'&&db.clients.some(x=>Number(x.id)===eid)){openClientCard(eid);return;}
+ if(et==='lead'&&db.leads.some(x=>Number(x.id)===eid)){openLeadCard(eid);return;}
+ if(et==='supplier'&&db.suppliers.some(x=>Number(x.id)===eid)){showTab('suppliers');openForm('suppliers',eid);return;}
+ if(table==='tasks'){showTab('tasks');return;}
+ if(et==='client')showTab('clients');else if(et==='lead')showTab('leads');else if(et==='supplier')showTab('suppliers');
+}
+function renderHome(){
+ let active=db.leads.length;
+ let shipped=db.shipments.filter(x=>x.status==='Отгружено').reduce((s,x)=>s+(+x.amount||0),0);
+ let debt=db.debts.reduce((s,x)=>s+Math.max(0,(+x.amount||0)-(+x.paid||0)),0);
+ let vals=[['Лиды',db.leads.length],['Клиенты',db.clients.length],['Открытые задачи',db.tasks.filter(x=>x.status!=='Выполнена').length]];
+ document.getElementById('stats').innerHTML=vals.map(x=>`<div class="stat"><div>${x[0]}</div><strong>${x[1]}</strong></div>`).join('');
+ let history=(db.activities||[]).map(a=>({...a,sortAt:historySortValue(a.at)}));
+ // Подстраховка для старых записей: показываем действия, которые ещё не попали в журнал.
+ (db.actions||[]).forEach(a=>{if(!(db.activities||[]).some(h=>h.sourceTable==='actions'&&Number(h.entityId)===Number(a.id)))history.push({type:'Действие',title:a.title||'Действие',details:[a.status,a.manager].filter(Boolean).join(' · '),at:a.actionDate||'Дата не указана',sortAt:historySortValue(a.actionDate),entityType:a.supplierId?'supplier':a.clientId?'client':'lead',entityId:a.supplierId||a.clientId||a.leadId});});
+ history.sort((a,b)=>b.sortAt-a.sortAt);homeHistory=history.slice(0,20);
+ document.getElementById('recent').innerHTML=homeHistory.length?homeHistory.map((a,i)=>{let who=a.entityType==='supplier'?supplierName(a.entityId)+' — поставщик':a.entityType==='client'?clientName(a.entityId)+' — клиент':a.entityType==='lead'?leadName(a.entityId)+' — лид':'';return `<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(a.type||'Событие')} · <a href="#" onclick="event.preventDefault();openHomeHistory(${i})" style="color:var(--blue);text-decoration:underline">${esc(a.title||'Открыть запись')}</a></b><span class="muted">${esc(a.at||'')}</span></div>${who?`<div class="muted"><a href="#" onclick="event.preventDefault();openHomeHistory(${i})" style="color:inherit;text-decoration:underline">${esc(who)}</a></div>`:''}${a.details?`<div class="client-history">${esc(a.details)}</div>`:''}</div>`}).join(''):'<div class="empty">История пока пуста. Новые действия и добавленные записи будут отображаться здесь.</div>';
+ let ts=db.tasks.filter(x=>x.status!=='Выполнена').sort((a,b)=>((a.dueDate||'9999')+(a.dueTime||'')).localeCompare((b.dueDate||'9999')+(b.dueTime||''))).slice(0,12);
+ document.getElementById('upcoming').innerHTML=ts.length?ts.map(t=>{let cls=taskClass(t);return `<div class="${cls}" style="padding:10px;margin:6px 0;border-radius:6px"><b>${esc(t.taskType||'Задача')} · ${esc(t.title)}</b><div class="muted">${esc(t.dueDate||'Срок не указан')}${t.dueTime?' · '+esc(t.dueTime):''} · ${esc(t.manager||'Без менеджера')} · ${esc(taskEntityName(t))}</div><div class="task-actions"><button class="secondary" onclick="openForm('tasks',${t.id})">Изменить</button><button class="secondary" onclick="moveTask(${t.id})">Перенести</button></div></div>`}).join(''):'<div class="empty">Открытых задач нет</div>';
+}
+function updateDealStage(id,newStage,oldStage){
+ let deal=db.deals.find(x=>x.id===id);if(!deal||!stages.includes(newStage))return;
+ if(deal.stage===newStage)return;
+ if(!confirm(`Подтвердить смену этапа сделки «${deal.title}»?\\n\\n${deal.stage} → ${newStage}`)){
+  renderHome();return;
+ }
+ deal.stage=newStage;save();toast('Этап сделки обновлён');
+}
+
+function updateActionStatus(id,newStatus){const a=db.actions.find(x=>Number(x.id)===Number(id));if(!a||!actionStatuses.includes(newStatus)||a.status===newStatus)return;const old=a.status||'Не указан';if(!confirm(`Перевести действие «${a.title}» из статуса «${old}» в «${newStatus}»?`)){renderTab('actions');return;}a.statusHistory=Array.isArray(a.statusHistory)?a.statusHistory:[];a.statusHistory.push({from:old,to:newStatus,at:historyStamp()});a.status=newStatus;let et=a.supplierId?'supplier':a.clientId?'client':a.leadId?'lead':null,eid=a.supplierId||a.clientId||a.leadId;addActivity(et,eid,'Изменение действия',a.title||'Действие',`Статус: ${old} → ${newStatus}`,'actions');save();}
+function addActivity(entityType,entityId,type,title,details='',sourceTable=''){if(!Array.isArray(db.activities))db.activities=[];db.activities.push({id:Date.now()+Math.floor(Math.random()*1000),entityType,entityId:Number(entityId)||null,type,title,details,sourceTable,at:historyStamp()});}
+function historySortValue(value){if(!value)return 0;let m=String(value).match(/(\d{2})\.(\d{2})\.(\d{4})(?:,?\s+(\d{2}):(\d{2}))?/);if(m)return new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0)).getTime();let d=new Date(value);return Number.isNaN(d.getTime())?0:d.getTime();}
+function entityHistory(type,id){return (db.activities||[]).filter(a=>a.entityType===type&&Number(a.entityId)===Number(id)).sort((a,b)=>(b.at||'').localeCompare(a.at||''));}
+function openLeadCard(id){const l=db.leads.find(x=>x.id===id);if(!l)return;const hist=entityHistory('lead',id);const f=(k,v)=>`<div><small>${k}</small><b>${esc(v||'—')}</b></div>`;document.getElementById('clientCardTitle').textContent='Карточка лида: '+l.company;document.getElementById('clientCardContent').innerHTML=`<div class="client-card-section"><div class="client-card-grid">${f('Компания',l.company)}${f('Контакт',l.contact)}${f('Телефон',l.phone)}${f('E-mail',l.email)}${f('Страна / город',[l.country,l.city].filter(Boolean).join(', '))}${f('Источник',l.source)}${f('Менеджер',l.manager)}</div><p>${esc(l.notes||'')}</p><button onclick="convertLeadToClient(${l.id})">Перевести в клиента</button> <button class="secondary" onclick="convertLeadToSupplier(${l.id})">Перевести в поставщики</button> <button class="secondary" onclick="closeClientCard();openForm('leads',${l.id})">Изменить</button></div><div class="client-card-section"><h2>История взаимодействий (${hist.length})</h2>${hist.length?hist.map(a=>`<div class="client-task"><b>${esc(a.at)} · ${esc(a.type)}</b><div>${esc(a.title)}</div><div class="client-history">${esc(a.details)}</div></div>`).join(''):'<div class="muted">История пока пуста</div>'}</div>`;document.getElementById('clientCardBack').classList.add('show');}
+function convertLeadToClient(id){const l=db.leads.find(x=>Number(x.id)===Number(id));if(!l)return;if(!confirm(`Перевести лид «${l.company}» в клиенты?`))return;const c={...l,id:Math.max(0,...db.clients.map(x=>x.id||0))+1,convertedFromLeadId:l.id,additionalContacts:Array.isArray(l.additionalContacts)?l.additionalContacts:[]};delete c.source;db.clients.push(c);db.tasks.forEach(t=>{if(Number(t.leadId)===Number(id)){t.clientId=c.id;t.leadId=null;}});(db.activities||[]).forEach(a=>{if(a.entityType==='lead'&&Number(a.entityId)===Number(id)){a.entityType='client';a.entityId=c.id;}});addActivity('client',c.id,'Перевод из лида','Компания переведена из лида в клиента',`Источник лида: ${l.source||'не указан'}`);db.leads=db.leads.filter(x=>Number(x.id)!==Number(id));closeClientCard();save();toast('Лид переведён в клиенты');}
+function convertClientToLead(id){const c=db.clients.find(x=>Number(x.id)===Number(id));if(!c)return;if(!confirm(`Перевести клиента «${c.company}» обратно в лиды?\nКарточка компании, задачи и история взаимодействий будут перенесены в раздел «Лиды».`))return;const sourceOptions=['Позвонил сам','Написал на сайт компании','Написал на личную почту','Найден в интернете','Другое'];const entered=prompt('Укажите источник лида:\n'+sourceOptions.map((x,i)=>(i+1)+'. '+x).join('\n'),'5');if(entered===null)return;const n=Number(entered.trim());const source=Number.isInteger(n)&&n>=1&&n<=sourceOptions.length?sourceOptions[n-1]:(sourceOptions.includes(entered.trim())?entered.trim():'Другое');const l={...c,id:Math.max(0,...db.leads.map(x=>Number(x.id)||0))+1,source,convertedFromClientId:c.id};db.leads.push(l);db.tasks.forEach(t=>{if(Number(t.clientId)===Number(id)){t.leadId=l.id;t.clientId=null;}});(db.activities||[]).forEach(a=>{if(a.entityType==='client'&&Number(a.entityId)===Number(id)){a.entityType='lead';a.entityId=l.id;}});addActivity('lead',l.id,'Возврат в лиды','Клиент переведён обратно в лиды',`Источник лида: ${source}`);db.clients=db.clients.filter(x=>Number(x.id)!==Number(id));closeClientCard();save();render('leads');toast('Клиент переведён обратно в лиды');}
+function convertLeadToSupplier(id){const l=db.leads.find(x=>Number(x.id)===Number(id));if(!l)return;if(!confirm(`Перевести лид «${l.company}» в поставщики? Задачи, действия и история будут перенесены.`))return;const s={...l,id:Math.max(0,...db.suppliers.map(x=>Number(x.id)||0))+1,convertedFromLeadId:l.id,company:l.company,notes:l.notes||''};delete s.source;db.suppliers.push(s);db.tasks.forEach(t=>{if(Number(t.leadId)===Number(id)){t.supplierId=s.id;t.leadId=null;t.clientId=null;}});db.actions.forEach(a=>{if(Number(a.leadId)===Number(id)){a.supplierId=s.id;a.leadId=null;a.clientId=null;}});(db.activities||[]).forEach(a=>{if(a.entityType==='lead'&&Number(a.entityId)===Number(id)){a.entityType='supplier';a.entityId=s.id;}});addActivity('supplier',s.id,'Перевод из лида','Компания переведена из лида в поставщики',`Источник лида: ${l.source||'не указан'}`);db.leads=db.leads.filter(x=>Number(x.id)!==Number(id));closeClientCard();save();toast('Лид переведён в поставщики');}
+function convertClientToSupplier(id){const c=db.clients.find(x=>Number(x.id)===Number(id));if(!c)return;if(!confirm(`Перевести клиента «${c.company}» в поставщики? Задачи, действия и история будут перенесены.`))return;const s={...c,id:Math.max(0,...db.suppliers.map(x=>Number(x.id)||0))+1,convertedFromClientId:c.id,company:c.company};db.suppliers.push(s);db.tasks.forEach(t=>{if(Number(t.clientId)===Number(id)){t.supplierId=s.id;t.clientId=null;t.leadId=null;}});db.actions.forEach(a=>{if(Number(a.clientId)===Number(id)){a.supplierId=s.id;a.clientId=null;a.leadId=null;}});(db.activities||[]).forEach(a=>{if(a.entityType==='client'&&Number(a.entityId)===Number(id)){a.entityType='supplier';a.entityId=s.id;}});addActivity('supplier',s.id,'Перевод из клиента','Компания переведена из клиентов в поставщики');db.clients=db.clients.filter(x=>Number(x.id)!==Number(id));closeClientCard();save();toast('Клиент переведён в поставщики');}
+function taskClass(t){if(!t.dueDate)return '';let today=new Date();today.setHours(0,0,0,0);let d=new Date(t.dueDate+'T00:00:00');let diff=Math.round((d-today)/86400000);return diff<0?'task-overdue':diff===0?'task-today':diff<=3?'task-soon':''}
+function historyStamp(){return new Date().toLocaleString('ru-RU',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function addTaskHistory(task,changes,comment,action){if(!Array.isArray(task.history))task.history=[];task.history.push({at:historyStamp(),action:action||'Изменение задачи',changes:changes||[],comment:(comment||'').trim()})}
+function logTaskActivity(task,action,details=''){const et=task.supplierId?'supplier':task.clientId?'client':task.leadId?'lead':null,eid=task.supplierId||task.clientId||task.leadId;addActivity(et,eid,action,task.title||'Задача',details,'tasks');const a=db.activities[db.activities.length-1];if(a)a.taskId=task.id;}
+function taskHistoryHTML(task){let h=Array.isArray(task.history)?task.history:[];return h.length?`<div class="contact-editor" style="grid-column:1/-1"><b>История задачи</b>${h.slice().reverse().map(x=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><b>${esc(x.at||'')}</b> · ${esc(x.action||'Изменение')}<div>${(x.changes||[]).map(y=>esc(y)).join('<br>')}</div>${x.comment?`<div style="margin-top:5px"><i>Комментарий:</i> ${esc(x.comment)}</div>`:''}</div>`).join('')}</div>`:'<div class="contact-editor" style="grid-column:1/-1"><b>История задачи</b><div class="muted">История пока пуста. Новые изменения будут записываться автоматически.</div></div>'}
+let movingTaskId=null;
+function moveTask(id){
+ let t=db.tasks.find(x=>x.id===id);if(!t)return;
+ movingTaskId=id;
+ document.getElementById('moveTaskDate').value=t.dueDate||'';
+ document.getElementById('moveTaskComment').value='';
+ document.getElementById('moveTaskModal').classList.add('show');
+}
+function closeMoveTask(){document.getElementById('moveTaskModal').classList.remove('show');movingTaskId=null}
+document.getElementById('moveTaskForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ let t=db.tasks.find(x=>x.id===movingTaskId);if(!t)return;
+ let date=document.getElementById('moveTaskDate').value;
+ let comment=document.getElementById('moveTaskComment').value.trim();
+ if(!date){alert('Укажите новую дату выполнения.');return}
+ if(date===t.dueDate){alert('Дата не изменилась.');return}
+ if(!comment){alert('Добавьте комментарий к переносу задачи.');return}
+ let old=t.dueDate||'не указана';
+ t.dueDate=date;
+ addTaskHistory(t,[`Старая дата выполнения: ${old}`,`Новая дата выполнения: ${date}`],comment,'Перенос задачи');logTaskActivity(t,'Перенос задачи',`Срок: ${old} → ${date}. Комментарий: ${comment}`);
+ closeMoveTask();save();
+});
+function renderTab(tab){
+ if(tab==='home')return renderHome();
+ if(tab==='orders')return renderOrders();
+ if(tab==='reports')return renderReports();
+ let d=defs[tab], rows=db[tab];
+ if(['leads','clients','suppliers'].includes(tab)){
+  const leadFields=[['company','Компания'],['contact','Контакт'],['phone','Телефон'],['email','E-mail'],['manager','Менеджер'],['source','Источник']];
+  const fields=tab==='leads'?leadFields:d.fields.map(f=>[f[0],f[1]]);
+  const head=fields.map(f=>`<th data-col="${f[0]}">${f[1]}</th>`).join('');
+  const sorted=rows.slice().sort((a,b)=>(a.company||'').localeCompare(b.company||'','ru',{sensitivity:'base'}));
+  const emptyLabel=tab==='leads'?'Лидов пока нет':tab==='clients'?'Клиентов пока нет':'Поставщиков пока нет';
+  document.getElementById(tab).innerHTML=`<div class="pagehead"><h1>${d.title}</h1></div><div class="toolbar"><input id="search_${tab}" placeholder="Поиск по таблице..." oninput="filterRows('${tab}')"><button onclick="openForm('${tab}')">+ Добавить ${d.singular}</button><button class="secondary" onclick="downloadCSV('${tab}')">Выгрузить CSV</button></div><div class="panel scroll"><table id="table_${tab}"><thead><tr><th>ID</th>${head}<th data-actions="true">Действия</th></tr></thead><tbody>${sorted.length?sorted.map(r=>rowHTML(tab,r)).join(''):`<tr><td colspan="${fields.length+2}" class="empty">${emptyLabel}</td></tr>`}</tbody></table></div>`;
+  return;
+ }
+ let fields=d.fields;
+ if(tab==='tasks')fields=[['title','Задача'],['taskType','Тип задачи'],['company','Компания'],['manager','Менеджер'],['dueDate','Дата выполнения'],['dueTime','Время'],['reminderAt','Напоминание'],['status','Статус'],['notes','Примечания']];
+ let head=fields.map(f=>`<th data-col="${f[0]}">${f[1]}<span class="col-resizer" title="Изменить ширину"></span></th>`).join('');
+ let search=`<div class="toolbar"><input id="search_${tab}" placeholder="Поиск по таблице..." oninput="filterRows('${tab}')"><button onclick="openForm('${tab}')">+ Добавить ${d.singular}</button><button class="secondary" onclick="downloadCSV('${tab}')">Выгрузить CSV</button></div>`;
+ document.getElementById(tab).innerHTML=`<div class="pagehead"><h1>${d.title}</h1></div>${search}<div class="panel scroll"><table id="table_${tab}"><thead><tr><th>ID</th>${head}<th data-actions="true">Действия</th></tr></thead><tbody>${rows.length?rows.map(r=>rowHTML(tab,r)).join(''):`<tr><td colspan="${fields.length+2}" class="empty">Записей пока нет</td></tr>`}</tbody></table></div>`;
+}
+
+let editingOrderId=null;
+function orderProductOptions(){
+ const vals=[...db.deals.map(x=>x.product),...db.shipments.map(x=>x.product),...db.orders.map(x=>x.product)].map(x=>String(x||'').trim()).filter(Boolean);
+ return [...new Set(vals)].sort((a,b)=>a.localeCompare(b,'ru'));
+}
+function supplierPaymentBreakdown(rows){
+ const now=new Date(), months=[];
+ for(let offset=-1;offset<=2;offset++){
+  const d=new Date(now.getFullYear(),now.getMonth()+offset,1);
+  months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+   label:d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})});
+ }
+ const groups=new Map();
+ rows.forEach(o=>{
+  const supplier=String(o.supplierName||'Поставщик не указан').trim()||'Поставщик не указан';
+  const qty=(o.clients||[]).reduce((n,c)=>n+(+c.quantity||0),0);
+  const amount=qty*(+o.supplierPrice||0);
+  const schedule=Array.isArray(o.paymentSchedule)&&o.paymentSchedule.length?o.paymentSchedule:[{date:o.paymentDueDate||'',amount}];
+  if(!groups.has(supplier))groups.set(supplier,{supplier,items:new Set(),planned:{},withoutDate:0});
+  const g=groups.get(supplier);
+  g.items.add(String(o.product||'Продукция'));
+  schedule.forEach(part=>{const monthKey=/^\d{4}-\d{2}/.test(String(part.date||''))?String(part.date).slice(0,7):'';const partAmount=Number(part.amount)||0;if(monthKey)g.planned[monthKey]=(g.planned[monthKey]||0)+partAmount;else g.withoutDate+=partAmount;});
+ });
+ const list=[...groups.values()].sort((a,b)=>a.supplier.localeCompare(b.supplier,'ru',{sensitivity:'base'}));
+ if(!list.length)return '<div class="panel" style="margin-bottom:16px"><h2>Оплата поставщикам</h2><div class="empty">Пока нет заказов с закупочной стоимостью</div></div>';
+ const monthHeaders=months.map(m=>`<th colspan="2" style="text-align:center;text-transform:capitalize">${esc(m.label)}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px"><span>К оплате</span><span>Фактически</span></div></th>`).join('');
+ const body=list.map(g=>{
+  const supplierKey=encodeURIComponent(g.supplier);
+  const assortment=[...g.items].sort((a,b)=>a.localeCompare(b,'ru',{sensitivity:'base'}));
+  const cells=months.map(m=>{
+   const planned=g.planned[m.key]||0;
+   const actual=Number(db.supplierPayments[`${g.supplier}||${m.key}`]||0);
+   return `<td style="text-align:right;min-width:125px"><b>${money(planned)}</b></td><td style="min-width:145px"><input type="number" min="0" step="0.01" value="${actual||''}" placeholder="0,00" aria-label="Фактическая оплата ${esc(g.supplier)} ${esc(m.label)}" onchange="setSupplierActualPayment('${supplierKey}','${m.key}',this.value)" style="min-width:125px;text-align:right"></td>`;
+  }).join('');
+  return `<tr><td style="white-space:normal;min-width:190px;max-width:270px"><b>${esc(g.supplier)}</b><div class="muted" style="font-size:12px;margin-top:5px;line-height:1.5">${assortment.map(esc).join('<br>')}</div></td>${cells}</tr>`;
+ }).join('');
+ const noDate=list.filter(g=>g.withoutDate>0).map(g=>`<div>${esc(g.supplier)} — ${money(g.withoutDate)}</div>`).join('');
+ return `<div class="panel" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div><h2 style="margin-bottom:5px">Оплата поставщикам</h2><div class="muted">Плановые суммы рассчитаны по срокам оплаты заказов. Фактические платежи вводятся вручную и сохраняются в CRM.</div></div><strong style="font-size:20px;color:var(--navy)">${money(list.reduce((s,g)=>s+Object.values(g.planned).reduce((a,v)=>a+v,0),0))}</strong></div><div class="scroll"><table style="min-width:1120px"><thead><tr><th rowspan="2">Поставщик / ассортимент</th>${monthHeaders}</tr></thead><tbody>${body}</tbody></table></div>${noDate?`<div class="notice" style="margin:12px 0 0"><b>Заказы без указанного срока оплаты:</b>${noDate}</div>`:''}</div>`;
+}
+function setSupplierActualPayment(encodedSupplier,month,value){
+ const supplier=decodeURIComponent(encodedSupplier);
+ const key=`${supplier}||${month}`;
+ const amount=Math.max(0,Number(value)||0);
+ if(amount)db.supplierPayments[key]=amount;else delete db.supplierPayments[key];
+ localStorage.setItem(KEY,JSON.stringify(db));
+ toast('Фактическая оплата сохранена');
+}
+function renderOrders(){
+ const rows=[...db.orders].sort((a,b)=>(a.productionDate||'').localeCompare(b.productionDate||''));
+ const total=rows.reduce((n,o)=>n+(o.clients||[]).reduce((s,c)=>s+(+c.quantity||0),0),0);
+ const supplierTotal=rows.reduce((n,o)=>n+(o.clients||[]).reduce((s,c)=>s+(+c.quantity||0),0)*(+o.supplierPrice||0),0);
+ document.getElementById('orders').innerHTML=`<div class="pagehead"><div><h1>Заказы и планирование производства</h1><div class="muted" style="margin-top:6px">Планируйте выпуск продукции и распределяйте потребность между несколькими клиентами</div></div><button onclick="openOrderForm()">+ Новый заказ / постановка</button></div>
+ <div class="grid" style="margin-bottom:16px"><div class="stat"><div>Планов производства</div><strong>${rows.length}</strong></div><div class="stat"><div>Клиентских заявок</div><strong>${rows.reduce((n,o)=>n+(o.clients||[]).length,0)}</strong></div><div class="stat"><div>Общая потребность</div><strong>${new Intl.NumberFormat('ru-RU').format(total)}</strong></div><div class="stat"><div>К оплате поставщикам</div><strong>${money(supplierTotal)}</strong></div></div>
+ ${supplierPaymentBreakdown(rows)}
+ <div class="toolbar"><input id="search_orders" placeholder="Поиск по продукции или клиенту..." oninput="filterOrderRows(this.value)"><button class="secondary" onclick="downloadOrdersCSV()">Выгрузить план в CSV</button></div>
+ <div class="panel scroll"><table id="ordersTable"><thead><tr><th>№</th><th>Ассортимент</th><th>Дата постановки</th><th>Клиенты и потребность</th><th>Общий объём</th><th>Поставщик</th><th>Срок оплаты</th><th>Цена бутылки у поставщика</th><th>Сумма к оплате поставщику</th><th>Комментарий</th><th>Действия</th></tr></thead><tbody>${rows.length?rows.map(o=>{let sum=(o.clients||[]).reduce((n,c)=>n+(+c.quantity||0),0);let payable=sum*(+o.supplierPrice||0);let detail=(o.clients||[]).map(c=>`${esc(clientName(c.clientId))}: ${new Intl.NumberFormat('ru-RU').format(+c.quantity||0)}${c.note?' ('+esc(c.note)+')':''}`).join('<br>');return `<tr data-search="${esc((o.product+' '+(o.clients||[]).map(c=>clientName(c.clientId)).join(' ')).toLowerCase())}"><td>${o.id}</td><td><b>${esc(o.product)}</b></td><td>${esc(o.productionDate||'—')}</td><td style="white-space:normal;min-width:240px">${detail||'—'}</td><td><b>${new Intl.NumberFormat('ru-RU').format(sum)}</b></td><td>${esc(o.supplierName||'—')}</td><td>${(o.paymentSchedule||[]).length?o.paymentSchedule.map(p=>`${esc(p.date||'без даты')} — ${money(p.amount)}`).join('<br>'):esc(o.paymentDueDate||'—')}</td><td>${o.supplierPrice!==undefined?money(o.supplierPrice):'—'}</td><td><b>${money(payable)}</b></td><td style="white-space:normal;min-width:150px">${esc(o.notes||'')}</td><td><div class="actions"><button class="secondary" onclick="openOrderForm(${o.id})">Изменить</button><button class="danger" onclick="deleteOrder(${o.id})">Удалить</button></div></td></tr>`}).join(''):`<tr><td colspan="11" class="empty">Заказов пока нет. Создайте первую постановку в производство.</td></tr>`}</tbody></table></div>`;
+ initResizableTables();
+}
+function filterOrderRows(q){q=String(q||'').toLowerCase();document.querySelectorAll('#ordersTable tbody tr').forEach(tr=>tr.style.display=(tr.dataset.search||'').includes(q)?'':'none')}
+function orderClientRowHTML(item={}){
+ const pickerId='orderClientPicker_'+Math.random().toString(36).slice(2,9);
+ const opts=db.clients.map(c=>`<option value="${c.id}" ${String(item.clientId||'')===String(c.id)?'selected':''}>${esc(c.company)}</option>`).join('');
+ return `<div class="order-client-row" style="display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) minmax(140px,1.5fr) auto;gap:8px;align-items:center;margin-top:9px"><div><input type="search" autocomplete="off" placeholder="Поиск клиента по названию..." oninput="filterPickerOptions(this,'${pickerId}')" style="margin-bottom:5px"><select id="${pickerId}" data-order-client required><option value="">Выберите клиента</option>${opts}</select></div><input data-order-quantity type="number" min="0.001" step="any" required placeholder="Количество" value="${esc(item.quantity??'') }" oninput="updateOrderTotal()"><input data-order-note placeholder="Примечание (необязательно)" value="${esc(item.note||'')}"><button type="button" class="danger" onclick="this.closest('.order-client-row').remove();updateOrderTotal()">Убрать</button></div>`;
+}
+function filterPickerOptions(searchInput,selectId){
+ const select=document.getElementById(selectId);if(!select)return;
+ const q=String(searchInput.value||'').trim().toLocaleLowerCase('ru');
+ [...select.options].forEach((option,index)=>{if(index===0){option.hidden=false;return;}option.hidden=!!q&&!option.textContent.toLocaleLowerCase('ru').includes(q)});
+ if(select.selectedOptions[0]?.hidden)select.value='';
+}
+function addOrderClientRow(item={}){const box=document.getElementById('orderClientsList');if(!box)return;box.insertAdjacentHTML('beforeend',orderClientRowHTML(item));updateOrderTotal()}
+function orderPayableTotal(){const total=[...document.querySelectorAll('[data-order-quantity]')].reduce((s,x)=>s+(Number(x.value)||0),0);const price=Number(document.getElementById('orderSupplierPrice')?.value)||0;return total*price}
+function paymentRows(){return [...document.querySelectorAll('#orderPaymentsList .order-payment-row')]}
+function refreshOrderPaymentAmounts(){const rows=paymentRows(),total=orderPayableTotal();if(!rows.length)return; if(rows.length===1){const amount=rows[0].querySelector('[data-payment-amount]');amount.value=total.toFixed(2);amount.readOnly=true;return;}let entered=0;rows.slice(0,-1).forEach(row=>{const input=row.querySelector('[data-payment-amount]');input.readOnly=false;entered+=Math.max(0,Number(input.value)||0)});const last=rows[rows.length-1].querySelector('[data-payment-amount]');last.readOnly=true;last.value=Math.max(0,total-entered).toFixed(2)}
+function orderPaymentRowHTML(part={},last=false){return `<div class="order-payment-row" style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) auto;gap:8px;align-items:center;margin-top:8px"><label style="margin:0">Дата оплаты<input data-payment-date type="date" value="${esc(part.date||'')}"></label><label style="margin:0">Сумма, ₽<input data-payment-amount type="number" min="0" step="0.01" value="${part.amount??''}" ${last?'readonly':''} oninput="refreshOrderPaymentAmounts()" placeholder="Сумма платежа"></label><button type="button" class="danger" onclick="removeOrderPaymentRow(this)">Убрать</button></div>`}
+function addOrderPaymentRow(part={}){const box=document.getElementById('orderPaymentsList');if(!box)return;const rows=paymentRows();if(rows.length===1){const first=rows[0].querySelector('[data-payment-amount]');first.readOnly=false;first.value='';}box.insertAdjacentHTML('beforeend',orderPaymentRowHTML(part,true));refreshOrderPaymentAmounts()}
+function removeOrderPaymentRow(btn){const rows=paymentRows();if(rows.length<=1){alert('В заказе должен остаться хотя бы один срок оплаты');return;}btn.closest('.order-payment-row').remove();refreshOrderPaymentAmounts()}
+function collectOrderPaymentSchedule(){return paymentRows().map(row=>({date:row.querySelector('[data-payment-date]').value,amount:Number(row.querySelector('[data-payment-amount]').value)||0}));}
+function updateOrderTotal(){const total=[...document.querySelectorAll('[data-order-quantity]')].reduce((s,x)=>s+(Number(x.value)||0),0);const price=Number(document.getElementById('orderSupplierPrice')?.value)||0;const el=document.getElementById('orderTotal');if(el)el.textContent=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:3}).format(total);const payable=document.getElementById('orderSupplierTotal');if(payable)payable.textContent=money(total*price);refreshOrderPaymentAmounts()}
+function openOrderForm(id=null){
+ editingOrderId=id;const item=id?db.orders.find(x=>x.id===id):null;const form=document.getElementById('orderForm');form.reset();
+ document.getElementById('orderModalTitle').textContent=id?'Изменить производственный заказ':'Новый заказ / постановка в производство';
+ document.getElementById('orderProduct').value=item?.product||'';
+ document.getElementById('orderProductsList').innerHTML=orderProductOptions().map(x=>`<option value="${esc(x)}"></option>`).join('');
+ form.elements.productionDate.value=item?.productionDate||'';form.elements.supplierName.value=item?.supplierName||'';form.elements.supplierPrice.value=item?.supplierPrice??'';form.elements.notes.value=item?.notes||'';
+ const payBox=document.getElementById('orderPaymentsList');payBox.innerHTML='';const savedSchedule=Array.isArray(item?.paymentSchedule)&&item.paymentSchedule.length?item.paymentSchedule:[{date:item?.paymentDueDate||'',amount:null}];savedSchedule.forEach((part,i)=>payBox.insertAdjacentHTML('beforeend',orderPaymentRowHTML(part,i===savedSchedule.length-1)));
+ const box=document.getElementById('orderClientsList');box.innerHTML='';
+ (item?.clients?.length?item.clients:[{}]).forEach(c=>addOrderClientRow(c));refreshOrderPaymentAmounts();
+ document.getElementById('orderModal').classList.add('show');
+}
+function closeOrderModal(){document.getElementById('orderModal').classList.remove('show')}
+document.getElementById('orderForm').addEventListener('submit',e=>{
+ e.preventDefault();const product=document.getElementById('orderProduct').value.trim(),productionDate=e.target.elements.productionDate.value,supplierName=e.target.elements.supplierName.value.trim(),supplierPrice=Number(e.target.elements.supplierPrice.value),notes=e.target.elements.notes.value.trim();const paymentSchedule=collectOrderPaymentSchedule(),paymentDueDate=paymentSchedule[0]?.date||'';
+ const clients=[...document.querySelectorAll('#orderClientsList .order-client-row')].map(row=>({clientId:Number(row.querySelector('[data-order-client]').value),quantity:Number(row.querySelector('[data-order-quantity]').value),note:row.querySelector('[data-order-note]').value.trim()}));
+ if(!product){alert('Укажите ассортимент продукции');return}if(!(supplierPrice>=0)||e.target.elements.supplierPrice.value===''){alert('Укажите закупочную стоимость бутылки у поставщика');return}if(!clients.length||clients.some(c=>!c.clientId||!(c.quantity>0))){alert('Для каждой строки выберите клиента и укажите количество больше нуля');return}if(paymentSchedule.some(p=>p.amount<0)){alert('Сумма платежа не может быть отрицательной');return}
+ const record={product,productionDate,supplierName,paymentDueDate,paymentSchedule,supplierPrice,notes,clients};
+ if(editingOrderId){const i=db.orders.findIndex(x=>x.id===editingOrderId);if(i>=0)db.orders[i]={...db.orders[i],...record}}
+ else{record.id=Math.max(0,...db.orders.map(x=>x.id||0))+1;db.orders.push(record)}
+ closeOrderModal();save();
+});
+function deleteOrder(id){const o=db.orders.find(x=>x.id===id);if(!o)return;if(!confirm(`Удалить производственный заказ «${o.product}»?`))return;if(!confirm('Подтвердите удаление заказа и всех распределённых клиентских потребностей.'))return;db.orders=db.orders.filter(x=>x.id!==id);save()}
+function downloadOrdersCSV(){const rows=[['№','Ассортимент','Предполагаемая дата постановки','Поставщик','Срок оплаты','Клиент','Необходимое количество','Закупочная цена бутылки, ₽','Сумма к оплате поставщику, ₽','Примечание клиента','Комментарий к заказу']];db.orders.forEach(o=>(o.clients||[]).forEach(c=>rows.push([o.id,o.product,o.productionDate||'',o.supplierName||'',o.paymentDueDate||'',clientName(c.clientId),c.quantity,o.supplierPrice??'',(+c.quantity||0)*(+o.supplierPrice||0),c.note||'',o.notes||''])));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='partner_production_orders.csv';a.click();URL.revokeObjectURL(a.href)}
+
+const GLOBAL_TABLE_WIDTHS_KEY='partner_crm_table_widths_v1';
+function initResizableTables(){
+ let saved={};try{saved=JSON.parse(localStorage.getItem(GLOBAL_TABLE_WIDTHS_KEY)||'{}')||{}}catch(e){}
+ document.querySelectorAll('.view table').forEach(table=>{
+  if(table.dataset.globalResizeReady==='1')return;
+  table.dataset.globalResizeReady='1';
+  let headers=table.querySelectorAll('thead th');if(!headers.length&&table.rows.length)headers=table.rows[0].querySelectorAll('th');if(!headers.length)return;
+  table.style.tableLayout='fixed';
+  headers.forEach((th,index)=>{
+   const key=(table.id||'table')+'_'+index;
+   const initial=Math.round(th.getBoundingClientRect().width)||150;
+   const width=Number(saved[key])||initial;th.style.width=width+'px';
+   table.querySelectorAll('tbody tr').forEach(tr=>{const cell=tr.children[index];if(cell&&!cell.hasAttribute('colspan'))cell.style.width=width+'px'});
+   let grip=th.querySelector('.global-col-resizer');
+   if(!grip){grip=document.createElement('span');grip.className='global-col-resizer';grip.title='Потяните, чтобы изменить ширину столбца';th.appendChild(grip)}
+   let startX=0,startW=0;
+   grip.addEventListener('mousedown',ev=>{ev.preventDefault();ev.stopPropagation();startX=ev.clientX;startW=th.getBoundingClientRect().width;
+    const move=e=>{const w=Math.max(65,Math.round(startW+e.clientX-startX));th.style.width=w+'px';table.querySelectorAll('tbody tr').forEach(tr=>{const cell=tr.children[index];if(cell&&!cell.hasAttribute('colspan'))cell.style.width=w+'px'})};
+    const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);saved[key]=Math.round(th.getBoundingClientRect().width);try{localStorage.setItem(GLOBAL_TABLE_WIDTHS_KEY,JSON.stringify(saved))}catch(e){}};
+    document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+   });
+  });
+ });
+}
+
+const CLIENT_COL_KEY='partner_crm_client_columns_v1';
+const CLIENT_DEFAULT_COLS=['company','currentState','country','city','address','contact','phone','email','manager','notes'];
+function getClientColumns(){
+ try{let saved=JSON.parse(localStorage.getItem(CLIENT_COL_KEY)||'null');if(Array.isArray(saved)){let all=[...CLIENT_DEFAULT_COLS];return [...saved.filter(x=>all.includes(x)),...all.filter(x=>!saved.includes(x))]}}catch(e){}
+ return [...CLIENT_DEFAULT_COLS];
+}
+function saveClientColumns(){let t=document.getElementById('table_clients');if(!t)return;localStorage.setItem(CLIENT_COL_KEY,JSON.stringify([...t.querySelectorAll('thead th[data-col]')].map(x=>x.dataset.col)))}
+function initClientColumnControls(){
+ const table=document.getElementById('table_clients');if(!table)return;
+ const widths={company:210,currentState:155,country:110,city:130,address:180,contact:170,phone:135,email:190,manager:130,notes:240};
+ const savedWidths=JSON.parse(localStorage.getItem('partner_crm_client_widths_v1')||'{}');
+ table.querySelectorAll('thead th').forEach(th=>{
+  let col=th.dataset.col;th.style.width=(savedWidths[col]||widths[col]||150)+'px';th.draggable=true;
+  th.addEventListener('dragstart',e=>{th.classList.add('dragging');e.dataTransfer.setData('text/plain',col)});
+  th.addEventListener('dragend',()=>{th.classList.remove('dragging');table.querySelectorAll('th').forEach(x=>x.classList.remove('dragover'))});
+  th.addEventListener('dragover',e=>{e.preventDefault();th.classList.add('dragover')});
+  th.addEventListener('dragleave',()=>th.classList.remove('dragover'));
+  th.addEventListener('drop',e=>{e.preventDefault();th.classList.remove('dragover');let from=e.dataTransfer.getData('text/plain');if(!from||from===col)return;let order=getClientColumns(),a=order.indexOf(from),b=order.indexOf(col);order.splice(a,1);order.splice(b,0,from);applyClientColumnOrder(order);saveClientColumns()});
+  let grip=th.querySelector('.col-resizer'),startX,startW;
+  grip.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startX=e.clientX;startW=th.getBoundingClientRect().width;
+   const move=ev=>{let w=Math.max(75,startW+ev.clientX-startX);th.style.width=w+'px';let idx=[...th.parentElement.children].indexOf(th);table.querySelectorAll('tbody tr').forEach(tr=>{if(tr.children[idx])tr.children[idx].style.width=w+'px'})};
+   const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);saveClientWidths()};
+   document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+  });
+ });
+}
+function saveClientWidths(){let t=document.getElementById('table_clients'),w={};t.querySelectorAll('thead th[data-col]').forEach(th=>w[th.dataset.col]=Math.round(th.getBoundingClientRect().width));localStorage.setItem('partner_crm_client_widths_v1',JSON.stringify(w))}
+function applyClientColumnOrder(order){
+ let table=document.getElementById('table_clients');if(!table)return;
+ let header=table.tHead.rows[0],body=table.tBodies[0],actionHead=header.querySelector('th[data-actions]');
+ let headerMap={};[...header.querySelectorAll('th[data-col]')].forEach(th=>headerMap[th.dataset.col]=th);
+ order.forEach(k=>{if(headerMap[k])header.insertBefore(headerMap[k],actionHead)});
+ [...body.rows].forEach(row=>{
+  let actionCell=row.lastElementChild,cellMap={};
+  [...row.cells].slice(0,-1).forEach((cell,i)=>{cellMap[order[i]]=cell});
+  order.forEach(k=>{if(cellMap[k])row.insertBefore(cellMap[k],actionCell)});
+ });
+}
+function openClientCard(id){
+ let c=db.clients.find(x=>x.id===id);if(!c)return;
+ let tasks=db.tasks.filter(t=>Number(t.clientId)===Number(id)).sort((a,b)=>((b.dueDate||'')+(b.dueTime||'')).localeCompare((a.dueDate||'')+(a.dueTime||'')));
+ let active=tasks.filter(t=>t.status!=='Выполнена');
+ let history=tasks.flatMap(t=>(Array.isArray(t.history)?t.history:[]).map(h=>({task:t,entry:h}))).sort((a,b)=>(b.entry.at||'').localeCompare(a.entry.at||''));
+ const field=(label,value)=>`<div><small>${label}</small><b>${esc(value||'—')}</b></div>`;
+ document.getElementById('clientCardTitle').textContent='Карточка компании: '+c.company;
+ document.getElementById('clientCardContent').innerHTML=`
+ <div class="client-card-section"><div style="margin-bottom:10px"><button class="secondary" onclick="convertClientToLead(${c.id})">Перевести обратно в лиды</button> <button class="secondary" onclick="convertClientToSupplier(${c.id})">Перевести в поставщики</button></div><div class="client-card-grid">
+ ${field('Название компании',c.company)}${field('Контактное лицо',c.contact)}
+ ${field('Телефон',c.phone)}${field('Почта',c.email)}
+ ${field('Страна / город',[c.country,c.city].filter(Boolean).join(', '))}${field('Адрес',c.address)}
+ </div><div style="margin-top:12px"><small class="muted">Примечание</small><div>${esc(c.notes||'—')}</div></div></div>
+ <div class="client-card-section"><h2>Дополнительные контактные лица (${(Array.isArray(c.additionalContacts)?c.additionalContacts:[]).length})</h2>
+ ${(Array.isArray(c.additionalContacts)?c.additionalContacts:[]).length?c.additionalContacts.map(person=>`<div class="client-task"><b>${esc(person.name||'Без имени')}</b><div class="muted">${esc(person.position||'Должность не указана')}</div><div>Телефон: ${person.phone?`<a href="tel:${esc(person.phone)}">${esc(person.phone)}</a>`:'—'}</div><div>E-mail: ${person.email?`<a href="mailto:${esc(person.email)}">${esc(person.email)}</a>`:'—'}</div></div>`).join(''):'<div class="muted">Дополнительные контакты не добавлены</div>'}
+ </div>
+ <div class="client-card-section"><h2>Текущие задачи (${active.length})</h2>
+
+ ${active.length?active.map(t=>`<div class="client-task"><b>${esc(t.taskType||'Задача')} · ${esc(t.title)}</b><div class="muted">${esc(t.dueDate||'Срок не указан')} ${esc(t.dueTime||'')} · ${esc(t.status||'Открыта')} · ${esc(t.manager||'Без менеджера')}</div><div>${esc(t.notes||'')}</div><div class="task-actions"><button class="secondary" onclick="closeClientCard();openForm('tasks',${t.id})">Открыть задачу</button></div></div>`).join(''):'<div class="muted">Текущих задач нет</div>'}
+ </div>
+ <div class="client-card-section"><h2>Вся история задач (${history.length})</h2>
+ ${history.length?history.map(x=>`<div class="client-task"><b>${esc(x.entry.at||'')} · ${esc(x.entry.action||'Изменение задачи')}</b><div>${esc(x.task.title)}</div><div class="client-history">${(x.entry.changes||[]).map(esc).join('<br>')}${x.entry.comment?'<br>Комментарий: '+esc(x.entry.comment):''}</div></div>`).join(''):'<div class="muted">История задач пока пуста</div>'}
+ </div><div class="client-card-section"><h2>История взаимодействий компании</h2>${entityHistory('client',id).map(a=>`<div class="client-task"><b>${esc(a.at)} · ${esc(a.type)}</b><div>${esc(a.title)}</div><div class="client-history">${esc(a.details)}</div></div>`).join('')||'<div class="muted">История взаимодействий пока пуста</div>'}</div>`;
+ document.getElementById('clientCardBack').classList.add('show');
+}
+function closeClientCard(){document.getElementById('clientCardBack').classList.remove('show')}
+
+function valFor(tab,r,k){if(k==='leadId')return leadName(r[k]);if(k==='clientId')return clientName(r[k]);if(k==='dealId')return dealName(r[k]);if(k==='supplierId')return supplierName(r[k]);if(['amount','paid'].includes(k))return money(r[k]);if(k==='stage'||k==='status')return `<span class="badge">${esc(r[k]||'—')}</span>`;if(k==='probability')return (r[k]??0)+'%';if(k==='currentState')return `<button class="secondary" onclick="openClientCard(${r.id})">Открыть карточку</button>`;if(k==='company'&&tab==='clients')return `<a href="#" onclick="event.preventDefault();openClientCard(${r.id})">${esc(r.company||'—')}</a>`;if(k==='address')return `<span title="${esc(r[k]||'')}">${esc(r[k]||'—')}</span>`;return esc(r[k]||'—')}
+function rowHTML(tab,r){
+ const dealRowClass=tab==='deals'?(r.stage==='Выиграна'?'deal-won':r.stage==='Проиграна'?'deal-lost':''):'';
+ if(tab==='leads'){return `<tr data-search="${esc(JSON.stringify(r).toLowerCase())}"><td>${r.id}</td><td><a href="#" onclick="event.preventDefault();openLeadCard(${r.id})">${esc(r.company||'—')}</a></td><td>${esc(r.contact||'—')}</td><td>${esc(r.phone||'—')}</td><td>${esc(r.email||'—')}</td><td>${esc(r.manager||'—')}</td><td>${esc(r.source||'—')}</td><td><div class="actions"><button class="secondary" onclick="openForm('leads',${r.id})">Изменить</button><button class="danger" onclick="removeRow('leads',${r.id})">Удалить</button></div></td></tr>`}
+ if(tab==='clients'||tab==='suppliers'){return `<tr data-search="${esc(JSON.stringify(r).toLowerCase())}"><td>${r.id}</td>${defs[tab].fields.map(f=>`<td>${valFor(tab,r,f[0])}</td>`).join('')}<td><div class="actions"><button class="secondary" onclick="openForm('${tab}',${r.id})">Изменить</button><button class="danger" onclick="removeRow('${tab}',${r.id})">Удалить</button></div></td></tr>`}
+ if(tab==='tasks'){return `<tr data-search="${esc((JSON.stringify(r)+' '+taskEntityName(r)).toLowerCase())}"><td>${r.id}</td><td>${esc(r.title||'—')}</td><td>${esc(r.taskType||'Задача')}</td><td>${esc(taskEntityName(r))}</td><td>${esc(r.manager||'—')}</td><td>${esc(r.dueDate||'—')}</td><td>${esc(r.dueTime||'—')}</td><td>${esc(r.reminderAt||'—')}</td><td>${esc(r.status||'Открыта')}</td><td>${esc(r.notes||'—')}</td><td><div class="actions"><button class="secondary" onclick="openForm('tasks',${r.id})">Изменить</button><button class="danger" onclick="removeRow('tasks',${r.id})">Удалить</button></div></td></tr>`}
+ if(tab==='actions'){return `<tr data-search="${esc(JSON.stringify(r).toLowerCase())}"><td>${r.id}</td><td>${esc(r.title||'—')}</td><td>${esc(leadName(r.leadId))}</td><td>${esc(clientName(r.clientId))}</td><td>${esc(supplierName(r.supplierId))}</td><td>${esc(r.manager||'—')}</td><td><select aria-label="Статус действия" onchange="updateActionStatus(${r.id},this.value)">${actionStatuses.map(x=>`<option ${r.status===x?'selected':''}>${esc(x)}</option>`).join('')}</select></td><td>${esc(r.actionDate||'—')}</td><td>${esc(r.notes||'—')}</td><td><div class="actions"><button class="secondary" onclick="openForm('actions',${r.id})">Изменить</button><button class="danger" onclick="removeRow('actions',${r.id})">Удалить</button></div></td></tr>`}
+ if(tab==='clients'){return `<tr data-search="${esc(JSON.stringify(r).toLowerCase())}">${getClientColumns().map(k=>`<td class="${k==='address'?'client-address':k==='notes'?'client-notes':''}">${valFor(tab,r,k)}</td>`).join('')}<td><div class="actions"><button class="secondary" onclick="openForm('clients',${r.id})">Изменить</button><button class="danger" onclick="removeRow('clients',${r.id})">Удалить</button></div></td></tr>`}
+ return `<tr class="${dealRowClass}" data-search="${esc(JSON.stringify(r).toLowerCase())}"><td>${r.id}</td>${defs[tab].fields.map(f=>`<td>${valFor(tab,r,f[0])}</td>`).join('')}<td><div class="actions"><button class="secondary" onclick="openForm('${tab}',${r.id})">Изменить</button><button class="danger" onclick="removeRow('${tab}',${r.id})">Удалить</button></div></td></tr>`
+}
+let clientPage=1,clientPageSize=10;
+function renderClientPage(){
+ const table=document.getElementById('table_clients');if(!table)return;
+ const q=(document.getElementById('search_clients')?.value||'').trim().toLowerCase();
+ const filtered=db.clients.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>(a.company||'').localeCompare(b.company||'','ru',{sensitivity:'base'}));
+ const total=filtered.length,all=clientPageSize===0;
+ const pages=all?1:Math.max(1,Math.ceil(total/clientPageSize));
+ clientPage=Math.min(Math.max(1,clientPage),pages);
+ const start=all?0:(clientPage-1)*clientPageSize;
+ const shown=all?filtered:filtered.slice(start,start+clientPageSize);
+ const fields=getClientColumns();
+ const tbody=table.tBodies[0];
+ tbody.innerHTML=shown.length?shown.map(r=>rowHTML('clients',r)).join(''):`<tr><td colspan="${fields.length+1}" class="empty">${total?'На этой странице записей нет':'Клиенты не найдены'}</td></tr>`;
+ const pager=document.getElementById('clientsPagination');
+ if(pager){
+  const from=total?(all?1:start+1):0,to=all?total:Math.min(start+clientPageSize,total);
+  pager.innerHTML=`<span class="muted">Показано ${from}–${to} из ${total}</span>
+   <button class="secondary" onclick="changeClientPage(-1)" ${clientPage<=1||all?'disabled':''}>Назад</button>
+   <span>Страница ${all?1:clientPage} из ${pages}</span>
+   <button class="secondary" onclick="changeClientPage(1)" ${clientPage>=pages||all?'disabled':''}>Вперёд</button>`;
+ }
+}
+function changeClientPageSize(value){clientPageSize=Number(value)||0;clientPage=1;renderClientPage()}
+function changeClientPage(delta){clientPage+=delta;renderClientPage()}
+function filterRows(tab){
+ let q=(document.getElementById('search_'+tab)?.value||'').toLowerCase();document.querySelectorAll(`#table_${tab} tbody tr`).forEach(tr=>tr.style.display=tr.dataset.search?.includes(q)?'':'none')
+}
+function openForm(tab,id=null){
+ formTable=tab;editing=id;let item=id?db[tab].find(x=>x.id===id):{};
+ document.getElementById('modalTitle').textContent=(id?'Изменить: ':'Добавить: ')+defs[tab].singular;
+ let organizationPickerAdded=false;
+ document.getElementById('formFields').innerHTML=defs[tab].fields.map(f=>{
+  let [k,label,type='text',required=false]=f,v=item?.[k]??'';
+  let input='';
+  if(['tasks','actions','shipments'].includes(tab)&&['client','lead','supplier'].includes(type)){
+   if(organizationPickerAdded)return '';
+   organizationPickerAdded=true;
+   const selectedType=item?.supplierId?'supplier':item?.leadId?'lead':item?.clientId?'client':'';
+   const selectedId=item?.supplierId||item?.leadId||item?.clientId||'';
+   const selected=selectedType==='supplier'?supplierName(selectedId):selectedType==='lead'?leadName(selectedId):selectedType==='client'?clientName(selectedId):'';
+   input=`<div class="organization-picker" style="position:relative;grid-column:1/-1">
+    <input id="organizationSearch" type="search" autocomplete="off" placeholder="Начните вводить название клиента, лида или поставщика..." value="${esc(selected)}" oninput="clearOrganizationSelection();filterOrganizationOptions(this.value)" onfocus="filterOrganizationOptions(this.value)">
+    <input type="hidden" name="clientId" id="organizationClientId" value="${selectedType==='client'?esc(selectedId):''}">
+    <input type="hidden" name="leadId" id="organizationLeadId" value="${selectedType==='lead'?esc(selectedId):''}">
+    <input type="hidden" name="supplierId" id="organizationSupplierId" value="${selectedType==='supplier'?esc(selectedId):''}">
+    <div id="organizationOptions" class="panel" style="display:none;position:absolute;z-index:30;top:100%;left:0;right:0;max-height:240px;overflow:auto;background:white;box-shadow:0 8px 22px #0002;padding:0"></div>
+    <small class="muted">Можно выбрать только одну организацию. Введите несколько букв для поиска.</small>
+   </div>`;
+  }
+  else if(type==='client'&&(tab==='tasks'||tab==='deals')){
+   input=`<div class="task-client-picker" style="position:relative"><input id="taskClientSearch" type="search" autocomplete="off" placeholder="Начните вводить название клиента..." value="${esc(v?clientName(v):'')}" oninput="document.getElementById('taskClientId').value='';filterTaskClientOptions(this.value)" onfocus="filterTaskClientOptions(this.value)"><input type="hidden" name="clientId" id="taskClientId" value="${esc(v||'')}"><div id="taskClientOptions" class="panel" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;max-height:220px;overflow:auto;background:white;box-shadow:0 8px 22px #0002"></div></div>`;
+  }
+  else if(type==='lead'||type==='supplier'){let pickerId='entityPicker_'+k, arr=type==='lead'?db.leads:db.suppliers, entityLabel=type==='lead'?'лида':'поставщика';input=`<input type="search" autocomplete="off" placeholder="Поиск ${entityLabel} по названию..." oninput="filterPickerOptions(this,'${pickerId}')" style="margin-bottom:5px"><select id="${pickerId}" name="${k}"><option value="">— Не выбрано —</option>${arr.map(x=>`<option value="${x.id}" ${String(v)===String(x.id)?'selected':''}>${esc(x.company)}</option>`).join('')}</select>`}
+  else if(['taskType','leadSource'].includes(type)){let opts=type==='taskType'?taskTypes:leadSources;input=`<select name="${k}" ${type==='taskType'?'id=\"taskTypeSelect\" onchange=\"toggleTaskOtherField()\"':''}>${opts.map(x=>`<option ${v===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`}
+  else if(type==='client'||type==='deal'){let arr=type==='client'?db.clients:db.deals;let pickerId='entityPicker_'+k;input=`<input type="search" autocomplete="off" placeholder="Поиск ${type==='client'?'клиента':'сделки'} по названию..." oninput="filterPickerOptions(this,'${pickerId}')" style="margin-bottom:5px"><select id="${pickerId}" name="${k}"><option value="">— Не выбрано —</option>${arr.map(x=>`<option value="${x.id}" ${String(v)===String(x.id)?'selected':''}>${esc(type==='client'?x.company:x.title)}</option>`).join('')}</select>`}
+  else if(type==='stage'||type==='taskStatus'||type==='shipmentStatus'||type==='actionStatus'){let opts=type==='stage'?stages:type==='taskStatus'?['Открыта','В работе','Выполнена']:type==='actionStatus'?actionStatuses:['План','Подтверждена','Отгружено','Отменено'];input=`<select name="${k}" ${tab==='deals'&&k==='stage'?'id="dealStageSelect" onchange="toggleLostDealComment()"':''}>${opts.map(x=>`<option ${v===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`}
+  else if(type==='textarea')input=`<textarea name="${k}">${esc(v)}</textarea>`;
+  else input=`<input name="${k}" type="${type}" value="${esc(v)}" ${required?'required':''} ${type==='number'?'step="any"':''}>`;
+  return `<label>${['tasks','actions','shipments'].includes(tab)&&['client','lead','supplier'].includes(type)?'Компания':label}${input}</label>`;
+ }).join('');
+ if(tab==='deals'){
+   document.getElementById('formFields').insertAdjacentHTML('beforeend',`<label id="lostDealCommentWrap" style="grid-column:1/-1;display:none">Комментарий при проигрыше сделки<textarea id="lostDealComment" name="lostComment" placeholder="Укажите причину проигрыша или комментарий по результату переговоров...">${esc(item?.lostComment||'')}</textarea><small class="muted">Обязательное поле для сделки со статусом «Проиграна».</small></label>`);
+   toggleLostDealComment();
+ }
+ if(tab==='clients'){
+   const contacts=Array.isArray(item?.additionalContacts)?item.additionalContacts:[];
+   document.getElementById('formFields').insertAdjacentHTML('beforeend',`<div class="additional-contacts"><h3>Дополнительные контактные лица</h3><div class="muted">Добавьте сотрудников компании, их должности, телефоны и e-mail. Основное контактное лицо указано выше.</div><div id="contactsList">${contacts.map((c,i)=>contactRowHTML(c,i)).join('')}</div><button type="button" class="secondary" onclick="addContactRow()">+ Добавить контактное лицо</button></div>`);
+ }
+ if(tab==='tasks'){
+   document.getElementById('formFields').insertAdjacentHTML('beforeend',`<label id="taskTypeOtherWrap" style="grid-column:1/-1;display:none">Уточните тип задачи<textarea name="taskTypeOther" rows="2" placeholder="Например: подготовить документы, отправить образцы...">${esc(item?.taskTypeOther||'')}</textarea><small class="muted">Это поле для собственного уточнения. В статистику отчётов оно не включается.</small></label><label style="grid-column:1/-1">Комментарий к изменению (необязательно)<textarea name="taskChangeComment" placeholder="Что изменилось и почему?"></textarea></label>${id?taskHistoryHTML(item):'<div class="contact-editor" style="grid-column:1/-1"><b>История задачи</b><div class="muted">История начнётся после создания задачи.</div></div>'}`);
+   toggleTaskOtherField();
+ }
+ document.getElementById('modalback').classList.add('show');
+}
+function toggleLostDealComment(){
+ const stage=document.getElementById('dealStageSelect'),wrap=document.getElementById('lostDealCommentWrap'),comment=document.getElementById('lostDealComment');
+ if(!stage||!wrap||!comment)return;
+ const lost=stage.value==='Проиграна';wrap.style.display=lost?'flex':'none';comment.required=lost;
+}
+function organizationOptions(){
+ return [
+  ...db.clients.map(x=>({id:x.id,type:'client',name:x.company||'Без названия',kind:'Клиент',contact:x.contact,phone:x.phone})),
+  ...db.leads.map(x=>({id:x.id,type:'lead',name:x.company||'Без названия',kind:'Лид',contact:x.contact,phone:x.phone})),
+  ...db.suppliers.map(x=>({id:x.id,type:'supplier',name:x.company||'Без названия',kind:'Поставщик',contact:x.contact,phone:x.phone}))
+ ];
+}
+function filterOrganizationOptions(query=''){
+ const box=document.getElementById('organizationOptions');if(!box)return;
+ const q=String(query||'').trim().toLocaleLowerCase('ru');
+ const matches=organizationOptions().filter(x=>!q||[x.name,x.kind,x.contact,x.phone].some(v=>String(v||'').toLocaleLowerCase('ru').includes(q))).slice(0,60);
+ box.innerHTML=matches.length?matches.map(x=>`<button type="button" class="secondary" style="display:block;width:100%;text-align:left;border:0;border-radius:0;padding:9px 11px;background:white;color:var(--text)" onmousedown="event.preventDefault()" onclick="chooseOrganization('${x.type}',${Number(x.id)})"><b>${esc(x.name)}</b><span class="badge" style="margin-left:8px">${x.kind}</span>${x.contact?`<span class="muted"> · ${esc(x.contact)}</span>`:''}${x.phone?`<div class="muted">${esc(x.phone)}</div>`:''}</button>`).join(''):'<div class="empty">Совпадений не найдено</div>';
+ box.style.display='block';
+}
+function clearOrganizationSelection(){
+ ['organizationClientId','organizationLeadId','organizationSupplierId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+function chooseOrganization(type,id){
+ const item=organizationOptions().find(x=>x.type===type&&Number(x.id)===Number(id));if(!item)return;
+ ['client','lead','supplier'].forEach(k=>{const el=document.getElementById('organization'+k[0].toUpperCase()+k.slice(1)+'Id');if(el)el.value=k===type?item.id:'';});
+ const search=document.getElementById('organizationSearch');if(search)search.value=item.name;
+ const box=document.getElementById('organizationOptions');if(box)box.style.display='none';
+}
+function filterTaskClientOptions(query=''){
+ const box=document.getElementById('taskClientOptions');if(!box)return;
+ const q=String(query||'').trim().toLowerCase();
+ const matches=db.clients.filter(c=>!q||String(c.company||'').toLowerCase().includes(q)||String(c.contact||'').toLowerCase().includes(q)||String(c.phone||'').toLowerCase().includes(q)).slice(0,50);
+ box.innerHTML=matches.length?matches.map(c=>`<button type="button" class="secondary" style="display:block;width:100%;text-align:left;border:0;border-radius:0;padding:9px 11px" onmousedown="event.preventDefault()" onclick="chooseTaskClient(${c.id})"><b>${esc(c.company||'Без названия')}</b>${c.contact?`<span class="muted"> · ${esc(c.contact)}</span>`:''}${c.phone?`<div class="muted">${esc(c.phone)}</div>`:''}</button>`).join(''):'<div class="empty">Клиенты не найдены</div>';
+ box.style.display='block';
+}
+function taskChooseEntity(field){
+ if(field!=='clientId'){const client=document.getElementById('taskClientId');if(client)client.value='';const search=document.getElementById('taskClientSearch');if(search)search.value='';}
+ ['leadId','supplierId','clientId'].filter(k=>k!==field).forEach(k=>{const el=document.querySelector(`#recordForm [name=\"${k}\"]`);if(el)el.value='';const search=document.querySelector(`#recordForm input[oninput*=\"${k}\"]`);if(search)search.value='';});
+}
+function chooseTaskClient(id){
+ const c=db.clients.find(x=>Number(x.id)===Number(id));if(!c)return;
+ taskChooseEntity('clientId');
+ document.getElementById('taskClientId').value=c.id;
+ document.getElementById('taskClientSearch').value=c.company||'';
+ document.getElementById('taskClientOptions').style.display='none';
+}
+function contactRowHTML(c={},i=0){return `<div class="contact-row"><input placeholder="ФИО" data-contact="name" value="${esc(c.name||'')}"><input placeholder="Должность" data-contact="position" value="${esc(c.position||'')}"><input placeholder="Телефон" data-contact="phone" value="${esc(c.phone||'')}"><input placeholder="E-mail" data-contact="email" type="email" value="${esc(c.email||'')}"><button type="button" class="danger" onclick="this.parentElement.remove()">Удалить</button></div>`}
+function addContactRow(){let box=document.getElementById('contactsList');if(box)box.insertAdjacentHTML('beforeend',contactRowHTML({},box.children.length))}
+function toggleTaskOtherField(){const wrap=document.getElementById('taskTypeOtherWrap'),sel=document.getElementById('taskTypeSelect');if(wrap)wrap.style.display=sel&&sel.value==='Другое'?'grid':'none'}
+function closeForm(){document.getElementById('modalback').classList.remove('show')}
+document.getElementById('modalback').addEventListener('click',e=>{if(e.target.id==='modalback')return;});
+document.getElementById('recordForm').addEventListener('submit',e=>{
+ e.preventDefault();let data=Object.fromEntries(new FormData(e.target).entries());
+ let taskComment=data.taskChangeComment||'';delete data.taskChangeComment;
+ if(formTable==='deals'&&data.stage==='Проиграна'&&!String(data.lostComment||'').trim()){alert('При переводе сделки в статус «Проиграна» необходимо указать комментарий или причину проигрыша.');document.getElementById('lostDealComment')?.focus();return;}
+ if(formTable==='actions'&&[data.leadId,data.clientId,data.supplierId].filter(Boolean).length>1){alert('Укажите только одну организацию: лида, клиента или поставщика.');return;}
+ if(formTable==='tasks'&&[data.clientId,data.leadId,data.supplierId].filter(Boolean).length>1){alert('Для задачи можно выбрать только одну организацию: клиента, лида или поставщика. Очистите лишние поля.');return;}
+ if(formTable==='shipments'&&[data.clientId,data.leadId,data.supplierId].filter(Boolean).length>1){alert('Для отгрузки можно выбрать только одну организацию: клиента, лида или поставщика.');return;}
+ if(formTable==='clients'){
+   data.additionalContacts=[...document.querySelectorAll('#contactsList .contact-row')].map(row=>({
+     name:row.querySelector('[data-contact="name"]')?.value.trim()||'',
+     position:row.querySelector('[data-contact="position"]')?.value.trim()||'',
+     phone:row.querySelector('[data-contact="phone"]')?.value.trim()||'',
+     email:row.querySelector('[data-contact="email"]')?.value.trim()||''
+   })).filter(c=>c.name||c.position||c.phone||c.email);
+ }
+ defs[formTable].fields.forEach(f=>{let k=f[0],type=f[2];if(type==='number')data[k]=Number(data[k]||0);if(type==='client'||type==='deal'||type==='lead'||type==='supplier')data[k]=data[k]?Number(data[k]):null});
+ if(editing){
+   let i=db[formTable].findIndex(x=>x.id===editing),old=db[formTable][i];
+   if(formTable==='actions'&&old.status!==data.status){data.statusHistory=[...(old.statusHistory||[]),{from:old.status,to:data.status,at:historyStamp()}];}
+   if(formTable==='tasks'){
+     let changes=defs.tasks.fields.filter(f=>String(old[f[0]]??'')!==String(data[f[0]]??'')).map(f=>`${f[1]}: ${old[f[0]]??'—'} → ${data[f[0]]??'—'}`);
+     db.tasks[i]={...old,...data};if(String(old.reminderAt||'')!==String(data.reminderAt||''))db.tasks[i].reminderSent=false;
+     if(changes.length||taskComment.trim()){addTaskHistory(db.tasks[i],changes,taskComment,'Редактирование задачи');let summary=changes.join('; ');if(taskComment.trim())summary+=(summary?'. ':'')+'Комментарий: '+taskComment.trim();logTaskActivity(db.tasks[i],old.status!==db.tasks[i].status?'Изменение статуса задачи':'Изменение задачи',summary||'Добавлен комментарий');}
+   }else db[formTable][i]={...old,...data};
+ }else{
+   data.id=Math.max(0,...db[formTable].map(x=>x.id||0))+1;
+   if(formTable==='actions'){data.statusHistory=[{from:'',to:data.status,at:historyStamp()}];}
+   if(formTable==='tasks'){data.reminderSent=false;data.history=[{at:historyStamp(),action:'Создание задачи',changes:['Задача создана'],comment:taskComment.trim()}];let et=data.supplierId?'supplier':data.leadId?'lead':'client',eid=data.supplierId||data.leadId||data.clientId;addActivity(et,eid,'Создание задачи',data.title||'Новая задача',[data.taskType,data.dueDate?'Срок: '+data.dueDate:'',data.notes||'',taskComment.trim()?'Комментарий: '+taskComment.trim(): ''].filter(Boolean).join(' · '),'tasks');db.activities[db.activities.length-1].taskId=data.id;}
+   db[formTable].push(data);
+   if(['leads','clients','suppliers'].includes(formTable)){let kind=formTable==='leads'?'Лид':formTable==='clients'?'Клиент':'Поставщик';addActivity(formTable==='leads'?'lead':formTable==='clients'?'client':'supplier',data.id,'Добавление '+kind,'Добавлена запись: '+(data.company||''),data.manager?'Менеджер: '+data.manager:'','records');}
+   if(formTable==='actions'){let et=data.supplierId?'supplier':data.clientId?'client':data.leadId?'lead':null,eid=data.supplierId||data.clientId||data.leadId;addActivity(et,eid,'Действие',data.title||'Новое действие',[data.status,data.manager].filter(Boolean).join(' · '),'actions');}
+ }
+ if(formTable==='tasks'&&data.reminderAt&&'Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+ closeForm();save();
+});
+function removeRow(tab,id){let label=defs[tab].singular;if(!confirm(`Первое подтверждение. Вы действительно хотите удалить ${label}?`))return;if(!confirm('Второе подтверждение. Запись будет удалена без возможности восстановления. Продолжить?'))return;let word=prompt('Для окончательного удаления введите слово УДАЛИТЬ:');if(word!=='УДАЛИТЬ'){alert('Удаление отменено.');return}db[tab]=db[tab].filter(x=>x.id!==id);save()}
+let reportYear=new Date().getFullYear();
+let reportPeriod='month';
+let reportMonth=new Date().getMonth()+1;
+let reportQuarter=Math.floor(new Date().getMonth()/3)+1;
+function reportBounds(){
+ let start,end,label;
+ if(reportPeriod==='year'){start=`${reportYear}-01-01`;end=`${reportYear}-12-31`;label=`${reportYear} год`;}
+ else if(reportPeriod==='quarter'){let m=(reportQuarter-1)*3+1;start=`${reportYear}-${String(m).padStart(2,'0')}-01`;let last=new Date(reportYear,m+2,0);end=`${reportYear}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;label=`${reportQuarter} квартал ${reportYear} года`;}
+ else {let last=new Date(reportYear,reportMonth,0);start=`${reportYear}-${String(reportMonth).padStart(2,'0')}-01`;end=`${reportYear}-${String(reportMonth).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;label=`${new Date(reportYear,reportMonth-1,1).toLocaleString('ru-RU',{month:'long'})} ${reportYear} года`;}
+ return {start,end,label};
+}
+function inPeriod(date,bounds){return !!date&&date>=bounds.start&&date<=bounds.end}
+function renderReports(){
+ const dateYears=db.tasks.map(x=>(x.dueDate||'').slice(0,4)).filter(x=>/^\d{4}$/.test(x)).map(Number);
+ const years=[...new Set([new Date().getFullYear(),...dateYears])].sort((a,b)=>b-a);
+ if(!years.includes(reportYear))reportYear=years[0];
+ const bounds=reportBounds();
+ const tasks=db.tasks.filter(x=>inPeriod(x.dueDate,bounds));
+ const completed=tasks.filter(x=>x.status==='Выполнена');
+ const open=tasks.filter(x=>x.status!=='Выполнена');
+ const overdue=open.filter(x=>x.dueDate&&x.dueDate<localDateKey());
+ const inProgress=tasks.filter(x=>x.status==='В работе');
+ const types=taskTypes;
+ const periodOptions=reportPeriod==='month'?['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'].map((x,i)=>`<option value="${i+1}" ${reportMonth===i+1?'selected':''}>${x}</option>`).join(''):['I квартал','II квартал','III квартал','IV квартал'].map((x,i)=>`<option value="${i+1}" ${reportQuarter===i+1?'selected':''}>${x}</option>`).join('');
+ const periodPicker=reportPeriod==='year'?'':`<label>${reportPeriod==='month'?'Месяц':'Квартал'} <select id="reportSubperiod" style="width:auto;min-width:130px" onchange="changeReportSubperiod(this.value)">${periodOptions}</select></label>`;
+ document.getElementById('reports').innerHTML=`<h1 style="margin-bottom:20px">Статистика по задачам</h1>
+ <div class="panel" style="margin-bottom:16px"><div class="toolbar" style="margin:0;align-items:center;flex-wrap:wrap">
+ <label>Период <select id="reportPeriod" style="width:auto;min-width:130px" onchange="changeReportPeriod(this.value)"><option value="month" ${reportPeriod==='month'?'selected':''}>Месяц</option><option value="quarter" ${reportPeriod==='quarter'?'selected':''}>Квартал</option><option value="year" ${reportPeriod==='year'?'selected':''}>Год</option></select></label>
+ <label>Год <select id="reportYear" style="width:auto;min-width:100px" onchange="changeReportYear(this.value)">${years.map(y=>`<option value="${y}" ${y===reportYear?'selected':''}>${y}</option>`).join('')}</select></label>${periodPicker}
+ <button class="secondary" onclick="downloadPeriodReport()">Выгрузить статистику CSV</button>
+ </div><div class="muted" style="margin-top:8px">Задачи учитываются по дате выполнения. Напоминания в отчётность не включаются.</div></div>
+ <h2 style="margin-bottom:12px">Задачи за ${bounds.label}</h2>
+ <div class="grid"><div class="stat"><div>Всего задач</div><strong>${tasks.length}</strong></div><div class="stat"><div>Выполнено</div><strong>${completed.length}</strong></div><div class="stat"><div>Открыто</div><strong>${open.length}</strong></div><div class="stat"><div>В работе</div><strong>${inProgress.length}</strong></div><div class="stat"><div>Просрочено</div><strong>${overdue.length}</strong></div></div>
+ <div class="panel" style="margin-top:16px"><h2>Статистика по типам задач</h2><div class="scroll"><table><tr><th>Тип задачи</th><th>Всего</th><th>Выполнено</th><th>В работе</th><th>Открыто</th><th>Просрочено</th></tr>${types.map(t=>{const a=tasks.filter(x=>(x.taskType||'Другое')===t);return `<tr><td>${esc(t)}</td><td>${a.length}</td><td>${a.filter(x=>x.status==='Выполнена').length}</td><td>${a.filter(x=>x.status==='В работе').length}</td><td>${a.filter(x=>x.status==='Открыта').length}</td><td>${a.filter(x=>x.status!=='Выполнена'&&x.dueDate&&x.dueDate<localDateKey()).length}</td></tr>`}).join('')}</table></div></div>`;;
+ initResizableTables();
+}
+function changeReportPeriod(value){reportPeriod=value;renderReports()}
+function changeReportYear(value){reportYear=Number(value)||new Date().getFullYear();renderReports()}
+function changeReportSubperiod(value){if(reportPeriod==='month')reportMonth=Number(value);else reportQuarter=Number(value);renderReports()}
+function downloadPeriodReport(){
+ const bounds=reportBounds(),tasks=db.tasks.filter(x=>inPeriod(x.dueDate,bounds));
+ const rows=[['Статистика по задачам',bounds.label],[],['Показатель','Количество'],['Всего задач',tasks.length],['Выполнено',tasks.filter(x=>x.status==='Выполнена').length],['Открыто',tasks.filter(x=>x.status!=='Выполнена').length],['В работе',tasks.filter(x=>x.status==='В работе').length],['Просрочено',tasks.filter(x=>x.status!=='Выполнена'&&x.dueDate&&x.dueDate<localDateKey()).length],[],['Тип задачи','Всего','Выполнено','В работе','Открыто','Просрочено']];
+ taskTypes.forEach(t=>{const a=tasks.filter(x=>(x.taskType||'Другое')===t);rows.push([t,a.length,a.filter(x=>x.status==='Выполнена').length,a.filter(x=>x.status==='В работе').length,a.filter(x=>x.status==='Открыта').length,a.filter(x=>x.status!=='Выполнена'&&x.dueDate&&x.dueDate<localDateKey()).length])});
+ const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='partner_crm_tasks_'+bounds.start+'_'+bounds.end+'.csv';a.click();URL.revokeObjectURL(a.href);
+}
+function exportData(){downloadBackupObject(db,'partner_crm_backup_'+localDateKey()+'.json')}
+document.getElementById('importFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!confirm('Импорт заменит текущие данные. Продолжить?'))return;db={...emptyDB,...x};save();toast('База импортирована')}catch(err){alert('Не удалось прочитать файл резервной копии')}e.target.value=''});
+function downloadCSV(tab){let cols=defs[tab].fields,rows=db[tab];let text=[['ID',...cols.map(x=>x[1])],...rows.map(r=>[r.id,...cols.map(f=>{let v=r[f[0]];if(f[0]==='clientId')v=clientName(v);if(f[0]==='leadId')v=leadName(v);if(f[0]==='dealId')v=dealName(v);if(f[0]==='supplierId')v=supplierName(v);return v??''})])].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=tab+'.csv';a.click();URL.revokeObjectURL(a.href)}
+document.getElementById('clientCardBack').addEventListener('click',e=>{if(e.target.id==='clientCardBack')closeClientCard()});
+function checkTaskReminders(){
+ if(!('Notification' in window)||Notification.permission!=='granted')return;
+ const now=Date.now();let changed=false;
+ db.tasks.forEach(t=>{if(!t.reminderAt||t.reminderSent||t.status==='Выполнена')return;const at=new Date(t.reminderAt).getTime();if(Number.isFinite(at)&&at<=now){new Notification('Напоминание о задаче',{body:(t.title||'Задача')+' · '+taskEntityName(t)});t.reminderSent=true;changed=true;}});
+ if(changed)localStorage.setItem(KEY,JSON.stringify(db));
+}
+setInterval(checkTaskReminders,20000);checkTaskReminders();
+renderAll();
+</script>
+</body></html>
