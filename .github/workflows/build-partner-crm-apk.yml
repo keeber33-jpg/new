@@ -15,6 +15,20 @@ jobs:
         working-directory: PartnerCRM_Android
     steps:
       - uses: actions/checkout@v4
+      - name: Check CRM JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('PartnerCRM_Android/app/src/main/assets/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', html, re.S)
+          if not scripts:
+              raise SystemExit('No inline JavaScript blocks found')
+          for i, script in enumerate(scripts):
+              Path(f'/tmp/crm-script-{i}.js').write_text(script, encoding='utf-8')
+          print(f'Extracted {len(scripts)} JavaScript blocks')
+          PY
+          for file in /tmp/crm-script-*.js; do node --check "$file"; done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
