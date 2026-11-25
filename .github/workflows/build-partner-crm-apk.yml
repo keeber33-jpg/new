@@ -20,7 +20,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          html = Path('PartnerCRM_Android/app/src/main/assets/index.html').read_text(encoding='utf-8')
+          html = Path('app/src/main/assets/index.html').read_text(encoding='utf-8')
           scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', html, re.S)
           if not scripts:
               raise SystemExit('No inline JavaScript blocks found')
