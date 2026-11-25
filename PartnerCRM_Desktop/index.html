@@ -248,10 +248,11 @@ function downloadBackupObject(data,filename){
  a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function loadDB(){try{return {...emptyDB,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){return structuredClone(emptyDB)}}
-function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Изменения сохранены');scheduleCloudPush();}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));markLocalDirty();renderAll();toast('Изменения сохранены');scheduleCloudPush();}
 
 const SYNC_CONFIG_KEY='partner_crm_cloud_config_v1';
 const SYNC_SESSION_KEY='partner_crm_cloud_session_v1';
+const SYNC_LOCAL_DIRTY_KEY='partner_crm_cloud_local_dirty_v1';
 let syncSession=null,syncRevision=null,syncConnected=false,syncDirty=false,syncConflict=false,syncPushTimer=null,syncPollTimer=null,syncLastSynced='';
 function getSyncConfig(){try{return JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY)||'{}')}catch(e){return {}}}
 function syncSetStatus(message){const el=document.getElementById('syncStatus');if(el)el.textContent=message;const i=document.getElementById('syncIndicator');if(i)i.textContent=syncConnected?'☁ Синхронизировано':'☁ '+(syncConflict?'Конфликт':'Не подключено');}
@@ -277,18 +278,18 @@ async function syncConnect(){
   syncSession=j;localStorage.setItem(SYNC_SESSION_KEY,JSON.stringify(j));
   const row=await syncGetRow();
   if(!row){
-   const created=await syncRequest('/rest/v1/crm_state',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify({id:1,revision:1,data:db,updated_at:new Date().toISOString(),updated_by:email})});
-   syncRevision=1;syncLastSynced=JSON.stringify(db);syncDirty=false;
+   await syncRequest('/rest/v1/crm_state',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify({id:1,revision:1,data:db,updated_at:new Date().toISOString(),updated_by:email})});
+   syncRevision=1;syncLastSynced=JSON.stringify(db);clearLocalDirty();
    syncSetStatus('Подключено. Создана первая облачная база из данных этого устройства.');
   }else{
    syncRevision=Number(row.revision)||1;
-   if(!dbHasData(row.data)&&dbHasData(db)){
-    const ok=confirm('Облачная база пока пустая. Загрузить в неё данные с этого устройства?');
-    if(ok){await syncWriteAtRevision(syncRevision,db);syncLastSynced=JSON.stringify(db);syncDirty=false;}
-    else {db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);renderAll();}
+   const localText=JSON.stringify(db),cloudText=JSON.stringify({...emptyDB,...row.data});
+   if(dbHasData(db)&&localText!==cloudText){
+    const useLocal=confirm('На этом устройстве есть данные, отличающиеся от облачной базы. OK — отправить локальную базу в облако (заменить общую). Отмена — сохранить локальную копию в резерв и загрузить общую облачную базу.');
+    if(useLocal){await syncWriteAtRevision(syncRevision,db);syncLastSynced=JSON.stringify(db);clearLocalDirty();}
+    else{localStorage.setItem('partner_crm_precloud_backup_'+Date.now(),localText);db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();}
    }else{
-    localStorage.setItem(KEY,JSON.stringify(db));
-    db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);renderAll();
+    db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();
    }
    syncSetStatus('Подключено. Загружена облачная версия №'+syncRevision+'.');
   }
@@ -302,14 +303,16 @@ async function syncWriteAtRevision(revision,snapshot){
  if(!Array.isArray(rows)||!rows.length)throw new Error('REVISION_CONFLICT');
  syncRevision=Number(rows[0].revision);return rows[0];
 }
-function scheduleCloudPush(){if(!syncConnected)return;syncDirty=true;if(syncPushTimer)clearTimeout(syncPushTimer);syncPushTimer=setTimeout(syncPush,900);}
+function markLocalDirty(){localStorage.setItem(SYNC_LOCAL_DIRTY_KEY,'1');}
+function clearLocalDirty(){localStorage.removeItem(SYNC_LOCAL_DIRTY_KEY);syncDirty=false;}
+function scheduleCloudPush(){markLocalDirty();if(!syncConnected)return;syncDirty=true;if(syncPushTimer)clearTimeout(syncPushTimer);syncPushTimer=setTimeout(syncPush,900);}
 async function syncPush(){
  if(!syncConnected||!syncDirty||syncConflict)return;
  const snapshot=JSON.parse(JSON.stringify(db));const snapshotText=JSON.stringify(snapshot);
  try{
   await syncWriteAtRevision(syncRevision,snapshot);
   syncLastSynced=snapshotText;
-  if(JSON.stringify(db)===snapshotText){syncDirty=false;syncSetStatus('Синхронизировано · версия '+syncRevision);}
+  if(JSON.stringify(db)===snapshotText){clearLocalDirty();syncSetStatus('Синхронизировано · версия '+syncRevision);}
   else{syncDirty=true;scheduleCloudPush();}
  }catch(e){
   if(e.message==='REVISION_CONFLICT'){showSyncConflict();return;}
@@ -322,19 +325,20 @@ async function syncPoll(){
   const row=await syncGetRow();if(!row)return;
   const rev=Number(row.revision)||1;
   if(rev>syncRevision){
-   if(syncDirty){showSyncConflict();return;}
-   db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=rev;syncLastSynced=JSON.stringify(db);renderAll();syncSetStatus('Получены изменения из облака · версия '+syncRevision+'.');
+   if(syncDirty||localStorage.getItem(SYNC_LOCAL_DIRTY_KEY)==='1'){showSyncConflict();return;}
+   db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=rev;syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();syncSetStatus('Получены изменения из облака · версия '+syncRevision+'.');
   }
  }catch(e){syncSetStatus('Нет связи с облаком: '+e.message);}
 }
 async function syncForcePull(){
  if(!confirm('Заменить локальные данные текущей облачной базой? Локальная копия останется в браузере только до следующего изменения. Сначала сделайте экспорт, если хотите её сохранить.'))return;
- try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=Number(row.revision)||1;syncLastSynced=JSON.stringify(db);syncDirty=false;syncConflict=false;renderAll();document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Загружена облачная версия '+syncRevision+'.');}catch(e){syncSetStatus('Не удалось загрузить облако: '+e.message);}
+ try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=Number(row.revision)||1;syncLastSynced=JSON.stringify(db);clearLocalDirty();syncConflict=false;renderAll();document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Загружена облачная версия '+syncRevision+'.');}catch(e){syncSetStatus('Не удалось загрузить облако: '+e.message);}
 }
 async function syncForcePush(){
  if(!confirm('ВНИМАНИЕ: заменить общую облачную базу всеми локальными данными этого устройства? Данные других менеджеров, которых нет здесь, могут быть потеряны. Продолжить?'))return;
- try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');syncRevision=Number(row.revision)||1;const snap=JSON.parse(JSON.stringify(db));await syncWriteAtRevision(syncRevision,snap);syncLastSynced=JSON.stringify(snap);syncDirty=false;syncConflict=false;document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Локальная база отправлена в облако · версия '+syncRevision+'.');}catch(e){if(e.message==='REVISION_CONFLICT')showSyncConflict();else syncSetStatus('Не удалось отправить данные: '+e.message);}
+ try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');syncRevision=Number(row.revision)||1;const snap=JSON.parse(JSON.stringify(db));await syncWriteAtRevision(syncRevision,snap);syncLastSynced=JSON.stringify(snap);clearLocalDirty();syncConflict=false;document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Локальная база отправлена в облако · версия '+syncRevision+'.');}catch(e){if(e.message==='REVISION_CONFLICT')showSyncConflict();else syncSetStatus('Не удалось отправить данные: '+e.message);}
 }
+async function syncAutoConnect(){const c=getSyncConfig();if(!c.url||!c.anonKey||!c.email||!localStorage.getItem(SYNC_SESSION_KEY))return;document.getElementById('syncUrl').value=c.url;document.getElementById('syncAnonKey').value=c.anonKey;document.getElementById('syncEmail').value=c.email;document.getElementById('syncPassword').value='';await syncConnect();}
 function syncDisconnect(){if(syncPollTimer)clearInterval(syncPollTimer);if(syncPushTimer)clearTimeout(syncPushTimer);syncPollTimer=null;syncPushTimer=null;syncConnected=false;syncConflict=false;syncDirty=false;syncSession=null;syncRevision=null;localStorage.removeItem(SYNC_SESSION_KEY);syncSetStatus('Отключено. Локальные данные не удалены.');document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';}
 
 function toast(s){let e=document.getElementById('flash');e.textContent=s;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
@@ -497,7 +501,7 @@ function setSupplierActualPayment(encodedSupplier,month,value){
  const amount=Math.max(0,Number(value)||0);
  if(amount)db.supplierPayments[key]=amount;else delete db.supplierPayments[key];
  localStorage.setItem(KEY,JSON.stringify(db));
- scheduleCloudPush();
+ markLocalDirty();scheduleCloudPush();
  toast('Фактическая оплата сохранена');
 }
 function renderOrders(){
@@ -871,9 +875,10 @@ function checkTaskReminders(){
  if(!('Notification' in window)||Notification.permission!=='granted')return;
  const now=Date.now();let changed=false;
  db.tasks.forEach(t=>{if(!t.reminderAt||t.reminderSent||t.status==='Выполнена')return;const at=new Date(t.reminderAt).getTime();if(Number.isFinite(at)&&at<=now){new Notification('Напоминание о задаче',{body:(t.title||'Задача')+' · '+taskEntityName(t)});t.reminderSent=true;changed=true;}});
- if(changed){localStorage.setItem(KEY,JSON.stringify(db));scheduleCloudPush();}
+ if(changed){localStorage.setItem(KEY,JSON.stringify(db));markLocalDirty();scheduleCloudPush();}
 }
 setInterval(checkTaskReminders,20000);checkTaskReminders();
 renderAll();
+if(localStorage.getItem(SYNC_SESSION_KEY))setTimeout(syncAutoConnect,700);
 </script>
 </body></html>
