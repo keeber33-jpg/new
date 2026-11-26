@@ -240,9 +240,19 @@ function downloadLatestAutoBackup(){
  if(!last){alert('Автоматических резервных копий пока нет');return}
  downloadBackupObject(last.data,'partner_crm_auto_backup_'+last.date+'.json');
 }
+function downloadBlob(blob,filename){
+ if(window.AndroidBridge&&typeof AndroidBridge.saveFile==='function'){
+  const reader=new FileReader();
+  reader.onload=()=>AndroidBridge.saveFile(String(reader.result).split(',')[1],filename,blob.type||'application/octet-stream');
+  reader.readAsDataURL(blob);
+  return;
+ }
+ const a=document.createElement('a'),url=URL.createObjectURL(blob);
+ a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function downloadBackupObject(data,filename){
- const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');
- a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+ downloadBlob(blob,filename);
 }
 function loadDB(){try{return {...emptyDB,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){return structuredClone(emptyDB)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll();scheduleCloudSync();toast('Изменения сохранены');}
@@ -462,7 +472,7 @@ document.getElementById('orderForm').addEventListener('submit',e=>{
  closeOrderModal();save();
 });
 function deleteOrder(id){const o=db.orders.find(x=>x.id===id);if(!o)return;if(!confirm(`Удалить производственный заказ «${o.product}»?`))return;if(!confirm('Подтвердите удаление заказа и всех распределённых клиентских потребностей.'))return;db.orders=db.orders.filter(x=>x.id!==id);save()}
-function downloadOrdersCSV(){const rows=[['№','Ассортимент','Предполагаемая дата постановки','Поставщик','Срок оплаты','Клиент','Необходимое количество','Закупочная цена бутылки, ₽','Сумма к оплате поставщику, ₽','Примечание клиента','Комментарий к заказу']];db.orders.forEach(o=>(o.clients||[]).forEach(c=>rows.push([o.id,o.product,o.productionDate||'',o.supplierName||'',o.paymentDueDate||'',clientName(c.clientId),c.quantity,o.supplierPrice??'',(+c.quantity||0)*(+o.supplierPrice||0),c.note||'',o.notes||''])));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='partner_production_orders.csv';a.click();URL.revokeObjectURL(a.href)}
+function downloadOrdersCSV(){const rows=[['№','Ассортимент','Предполагаемая дата постановки','Поставщик','Срок оплаты','Клиент','Необходимое количество','Закупочная цена бутылки, ₽','Сумма к оплате поставщику, ₽','Примечание клиента','Комментарий к заказу']];db.orders.forEach(o=>(o.clients||[]).forEach(c=>rows.push([o.id,o.product,o.productionDate||'',o.supplierName||'',o.paymentDueDate||'',clientName(c.clientId),c.quantity,o.supplierPrice??'',(+c.quantity||0)*(+o.supplierPrice||0),c.note||'',o.notes||''])));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});downloadBlob(blob,'partner_production_orders.csv')}
 
 const GLOBAL_TABLE_WIDTHS_KEY='partner_crm_table_widths_v1';
 function initResizableTables(){
@@ -769,11 +779,11 @@ function downloadPeriodReport(){
  const rows=[['Статистика по задачам',bounds.label],[],['Показатель','Количество'],['Всего задач',tasks.length],['Выполнено',tasks.filter(x=>x.status==='Выполнена').length],['Открыто',tasks.filter(x=>x.status!=='Выполнена').length],['В работе',tasks.filter(x=>x.status==='В работе').length],['Просрочено',tasks.filter(x=>x.status!=='Выполнена'&&x.dueDate&&x.dueDate<localDateKey()).length],[],['Тип задачи','Всего','Выполнено','В работе','Открыто','Просрочено']];
  taskTypes.forEach(t=>{const a=tasks.filter(x=>(x.taskType||'Другое')===t);rows.push([t,a.length,a.filter(x=>x.status==='Выполнена').length,a.filter(x=>x.status==='В работе').length,a.filter(x=>x.status==='Открыта').length,a.filter(x=>x.status!=='Выполнена'&&x.dueDate&&x.dueDate<localDateKey()).length])});
  const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
- const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='partner_crm_tasks_'+bounds.start+'_'+bounds.end+'.csv';a.click();URL.revokeObjectURL(a.href);
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});downloadBlob(blob,'partner_crm_tasks_'+bounds.start+'_'+bounds.end+'.csv');
 }
 function exportData(){downloadBackupObject(db,'partner_crm_backup_'+localDateKey()+'.json')}
 document.getElementById('importFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!confirm('Импорт заменит текущие данные. Продолжить?'))return;db={...emptyDB,...x};save();toast('База импортирована')}catch(err){alert('Не удалось прочитать файл резервной копии')}e.target.value=''});
-function downloadCSV(tab){let cols=defs[tab].fields,rows=db[tab];let text=[['ID',...cols.map(x=>x[1])],...rows.map(r=>[r.id,...cols.map(f=>{let v=r[f[0]];if(f[0]==='clientId')v=clientName(v);if(f[0]==='leadId')v=leadName(v);if(f[0]==='dealId')v=dealName(v);if(f[0]==='supplierId')v=supplierName(v);return v??''})])].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=tab+'.csv';a.click();URL.revokeObjectURL(a.href)}
+function downloadCSV(tab){let cols=defs[tab].fields,rows=db[tab];let text=[['ID',...cols.map(x=>x[1])],...rows.map(r=>[r.id,...cols.map(f=>{let v=r[f[0]];if(f[0]==='clientId')v=clientName(v);if(f[0]==='leadId')v=leadName(v);if(f[0]==='dealId')v=dealName(v);if(f[0]==='supplierId')v=supplierName(v);return v??''})])].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'});downloadBlob(blob,tab+'.csv')}
 document.getElementById('clientCardBack').addEventListener('click',e=>{if(e.target.id==='clientCardBack')closeClientCard()});
 function checkTaskReminders(){
  if(!('Notification' in window)||Notification.permission!=='granted')return;
