@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Партнёр CRM — автономная веб-версия</title>
+<title>ПАРТНЁР CRM — облачная версия</title>
 <style>
 :root{--navy:#172b4d;--blue:#2866a6;--bg:#f3f6fa;--line:#e1e7ef;--text:#1d2939;--muted:#667085;--red:#c0392b;--green:#16845b}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,sans-serif}
@@ -80,17 +80,6 @@ body:not(.crm-authenticated) > footer { display:none !important; }
 #crmLoginGate button{width:100%;padding:12px;font-size:14px}
 #crmLoginError{display:none;color:#c0392b;font-size:13px;margin:0 0 12px}
 
-
-#syncModal{position:fixed;inset:0;background:#10182899;z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}
-#syncModal .sync-card{background:#fff;border-radius:12px;padding:22px;width:min(620px,100%);max-height:90vh;overflow:auto;box-shadow:0 18px 60px #0003}
-#syncModal h2{margin:0 0 8px}
-#syncModal label{display:block;font-weight:700;margin:12px 0 5px}
-#syncModal input{width:100%;padding:11px;border:1px solid #cfd8e3;border-radius:7px;font:14px Arial}
-#syncModal .sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-#syncStatus{padding:10px;border-radius:7px;background:#f1f5f9;margin:12px 0;color:#344054;white-space:pre-wrap}
-#syncIndicator{font-size:12px;color:#d6e8fb;padding:0 5px}
-@media(max-width:700px){#syncModal .sync-card{padding:16px}.headright{margin-left:0}}
-
 </style>
 </head>
 <body>
@@ -98,44 +87,75 @@ body:not(.crm-authenticated) > footer { display:none !important; }
 <div id="crmLoginGate">
  <form class="login-card" id="crmLoginForm">
   <h1>ПАРТНЁР CRM</h1>
-  <p>Для доступа к системе введите пароль.</p>
-  <label for="crmPassword">Пароль</label>
-  <input id="crmPassword" type="password" autocomplete="current-password" autofocus required>
-  <div id="crmLoginError">Неверный пароль. Попробуйте ещё раз.</div>
-  <button type="submit">Войти в CRM</button>
+  <p>Войдите в общую облачную базу. Один и тот же аккаунт проекта используется на компьютере и телефоне.</p>
+  <label for="crmProjectUrl">Supabase Project URL</label>
+  <input id="crmProjectUrl" type="url" placeholder="https://xxxxxxxx.supabase.co" autocomplete="url" required>
+  <label for="crmAnonKey">Supabase anon / publishable key</label>
+  <input id="crmAnonKey" type="text" placeholder="Ключ проекта Supabase" autocomplete="off" required>
+  <label for="crmEmail">Рабочая почта</label>
+  <input id="crmEmail" type="email" placeholder="manager@company.ru" autocomplete="username" required>
+  <label for="crmPassword">Пароль сотрудника</label>
+  <input id="crmPassword" type="password" autocomplete="current-password" required>
+  <div id="crmLoginError">Не удалось войти. Проверьте настройки и учётные данные.</div>
+  <button id="crmLoginButton" type="submit">Войти в CRM</button>
+  <p style="font-size:11px;margin:12px 0 0">Подключение защищено авторизацией Supabase. Пароль не сохраняется в браузере.</p>
  </form>
 </div>
 <script>
 (function(){
- const CRM_PASSWORD = "0000";
  const gate = document.getElementById("crmLoginGate");
- function unlock(){
-   document.body.classList.add("crm-authenticated");
-   gate.style.display = "none";
- }
- if(sessionStorage.getItem("partner_crm_authenticated") === "1") unlock();
- document.getElementById("crmLoginForm").addEventListener("submit", function(e){
+ const configKey = "partner_crm_cloud_config_v1";
+ try {
+   const cfg = JSON.parse(localStorage.getItem(configKey) || "{}");
+   document.getElementById("crmProjectUrl").value = cfg.url || "";
+   document.getElementById("crmAnonKey").value = cfg.anonKey || "";
+   document.getElementById("crmEmail").value = cfg.email || "";
+ } catch(e) {}
+ document.getElementById("crmLoginForm").addEventListener("submit", async function(e){
    e.preventDefault();
-   const value = document.getElementById("crmPassword").value;
-   if(value === CRM_PASSWORD){
-     sessionStorage.setItem("partner_crm_authenticated","1");
-     document.getElementById("crmLoginError").style.display = "none";
-     unlock();
-   } else {
-     document.getElementById("crmLoginError").style.display = "block";
+   const url = document.getElementById("crmProjectUrl").value.trim().replace(/\/+$/,"");
+   const anonKey = document.getElementById("crmAnonKey").value.trim();
+   const email = document.getElementById("crmEmail").value.trim();
+   const password = document.getElementById("crmPassword").value;
+   const error = document.getElementById("crmLoginError");
+   const button = document.getElementById("crmLoginButton");
+   if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !anonKey || !email || !password){
+     error.textContent = "Укажите корректный URL проекта, anon key, почту и пароль.";
+     error.style.display = "block"; return;
+   }
+   button.disabled = true; button.textContent = "Подключение…"; error.style.display = "none";
+   try {
+     const response = await fetch(url + "/auth/v1/token?grant_type=password", {
+       method:"POST",
+       headers:{"Content-Type":"application/json","apikey":anonKey},
+       body:JSON.stringify({email,password})
+     });
+     const session = await response.json();
+     if(!response.ok || !session.access_token) throw new Error(session.msg || session.message || session.error_description || "Неверная почта или пароль");
+     localStorage.setItem(configKey, JSON.stringify({url,anonKey,email}));
+     localStorage.setItem("partner_crm_cloud_session_v1", JSON.stringify({
+       accessToken:session.access_token,refreshToken:session.refresh_token,
+       expiresAt:Date.now()+(Number(session.expires_in)||3600)*1000,user:session.user
+     }));
+     document.body.classList.add("crm-authenticated");
+     gate.style.display = "none";
      document.getElementById("crmPassword").value = "";
-     document.getElementById("crmPassword").focus();
+     await startCloudSync();
+   } catch(err) {
+     error.textContent = "Ошибка входа: " + (err.message || "проверьте подключение");
+     error.style.display = "block";
+   } finally {
+     button.disabled = false; button.textContent = "Войти в CRM";
    }
  });
 })();
 </script>
-
 <header>
  <div class="brand">ПАРТНЁР <span>CRM</span></div>
  <nav id="nav">
   <button data-tab="home" class="active">Главная</button><button data-tab="leads">Лиды</button><button data-tab="clients">Клиенты</button><button data-tab="suppliers">Поставщики</button><button data-tab="orders">Заказы</button><button data-tab="shipments">Отгрузки</button><button data-tab="tasks">Задачи</button><button data-tab="debts">Дебиторка</button><button data-tab="reports">Отчёты</button>
  </nav>
- <div class="headright"><span id="syncIndicator">☁ Не подключено</span><button class="secondary" onclick="openSyncPanel()">Синхронизация</button><button class="secondary" onclick="exportData()">Экспорт базы</button><button class="secondary" onclick="crmLock()">Заблокировать</button><button class="secondary" onclick="document.getElementById('importFile').click()">Импорт базы</button><input id="importFile" type="file" accept=".json,application/json" class="hidden"></div>
+ <div class="headright"><span id="cloudSyncStatus" style="font-size:12px;color:#d9e8f7;white-space:nowrap">☁ Не подключено</span><button class="secondary" onclick="exportData()">Экспорт базы</button><button class="secondary" onclick="crmLock()">Заблокировать</button><button class="secondary" onclick="document.getElementById('importFile').click()">Импорт базы</button><input id="importFile" type="file" accept=".json,application/json" class="hidden"></div>
 </header>
 <main>
 
@@ -155,7 +175,7 @@ body:not(.crm-authenticated) > footer { display:none !important; }
 <section id="orders" class="view hidden"></section><section id="tasks" class="view hidden"></section><section id="shipments" class="view hidden"></section>
 <section id="debts" class="view hidden"></section><section id="reports" class="view hidden"></section>
 </main>
-<footer>ООО «Партнёр» · автономная веб-CRM · данные хранятся в этом браузере</footer>
+<footer>ООО «Партнёр» · облачная CRM · общая база Supabase · синхронизация через интернет</footer>
 <div class="modalback" id="modalback"><div class="modal"><div class="modalhead"><h2 id="modalTitle">Добавить</h2><button class="secondary" onclick="closeForm()">Закрыть</button></div><form id="recordForm"><div class="modalgrid" id="formFields"></div><div class="modalfoot"><button type="submit">Сохранить</button><button type="button" class="secondary" onclick="closeForm()">Отмена</button></div></form></div></div>
 <div class="modalback" id="moveTaskModal"><div class="modal" style="width:min(560px,100%)">
  <div class="modalhead"><h2>Перенос задачи</h2><button type="button" class="secondary" onclick="closeMoveTask()">Закрыть</button></div>
@@ -179,32 +199,9 @@ body:not(.crm-authenticated) > footer { display:none !important; }
 <label style="grid-column:1/-1">Комментарий к производственному заказу<textarea name="notes" placeholder="Партия, особенности, сроки и прочие условия"></textarea></label>
 </div><div class="contact-editor" style="margin-top:15px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>Потребность клиентов</b><div class="muted">Добавьте несколько клиентов и укажите необходимое количество каждому</div></div><button type="button" class="secondary" onclick="addOrderClientRow()">+ Добавить клиента</button></div><div id="orderClientsList"></div><div style="display:flex;justify-content:flex-end;margin-top:12px;font-weight:700">Общий объём: <span id="orderTotal" style="margin:0 8px">0</span> · К оплате поставщику: <span id="orderSupplierTotal" style="margin-left:8px">0,00 ₽</span></div></div>
 <div class="modalfoot"><button type="submit">Сохранить заказ</button><button type="button" class="secondary" onclick="closeOrderModal()">Отмена</button></div></form></div></div>
-
-<div id="syncModal">
- <div class="sync-card">
-  <h2>Облачная синхронизация CRM</h2>
-  <p class="muted">Подключите CRM к общей базе. После подключения изменения с компьютера и телефона будут передаваться через интернет.</p>
-  <label for="syncUrl">Supabase Project URL</label><input id="syncUrl" type="url" placeholder="https://xxxxxxxx.supabase.co">
-  <label for="syncAnonKey">Supabase anon / publishable key</label><input id="syncAnonKey" type="text" placeholder="sb_publishable_... или anon key">
-  <label for="syncEmail">Пользователь (e-mail)</label><input id="syncEmail" type="email" autocomplete="username" placeholder="crm@company.ru">
-  <label for="syncPassword">Пароль пользователя</label><input id="syncPassword" type="password" autocomplete="current-password" placeholder="Пароль Supabase Auth">
-  <div id="syncStatus">Не подключено. Сначала создайте проект Supabase и таблицу по инструкции.</div>
-  <div class="sync-actions">
-   <button onclick="syncConnect()">Подключить и синхронизировать</button>
-   <button class="secondary" onclick="syncDisconnect()">Отключить</button>
-   <button class="secondary" onclick="closeSyncPanel()">Закрыть</button>
-  </div>
-  <div class="sync-actions">
-   <button class="secondary" id="syncPullBtn" style="display:none" onclick="syncForcePull()">Загрузить облачную базу</button>
-   <button class="danger" id="syncPushBtn" style="display:none" onclick="syncForcePush()">Заменить облачную базу моей копией</button>
-  </div>
-  <p class="muted" style="font-size:12px;margin-top:14px">Данные CRM хранятся в облачной базе Supabase. Настройки подключения сохраняются на этом устройстве; пароль не сохраняется. Не публикуйте service_role key — нужен только anon/publishable key.</p>
- </div>
-</div>
-
 <script>
 function crmLock(){
- sessionStorage.removeItem("partner_crm_authenticated");
+ if(typeof stopCloudSync==='function')stopCloudSync();
  document.body.classList.remove("crm-authenticated");
  const gate=document.getElementById("crmLoginGate");
  gate.style.display="flex";
@@ -248,99 +245,7 @@ function downloadBackupObject(data,filename){
  a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function loadDB(){try{return {...emptyDB,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){return structuredClone(emptyDB)}}
-function save(){localStorage.setItem(KEY,JSON.stringify(db));markLocalDirty();renderAll();toast('Изменения сохранены');scheduleCloudPush();}
-
-const SYNC_CONFIG_KEY='partner_crm_cloud_config_v1';
-const SYNC_SESSION_KEY='partner_crm_cloud_session_v1';
-const SYNC_LOCAL_DIRTY_KEY='partner_crm_cloud_local_dirty_v1';
-let syncSession=null,syncRevision=null,syncConnected=false,syncDirty=false,syncConflict=false,syncPushTimer=null,syncPollTimer=null,syncLastSynced='';
-function getSyncConfig(){try{return JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY)||'{}')}catch(e){return {}}}
-function syncSetStatus(message){const el=document.getElementById('syncStatus');if(el)el.textContent=message;const i=document.getElementById('syncIndicator');if(i)i.textContent=syncConnected?'☁ Синхронизировано':'☁ '+(syncConflict?'Конфликт':'Не подключено');}
-function openSyncPanel(){const c=getSyncConfig();document.getElementById('syncUrl').value=c.url||'';document.getElementById('syncAnonKey').value=c.anonKey||'';document.getElementById('syncEmail').value=c.email||'';document.getElementById('syncPassword').value='';document.getElementById('syncModal').style.display='flex';syncSetStatus(syncConnected?'Подключено. Последняя версия облака: '+syncRevision:(syncConflict?'Есть конфликт версий. Выберите загрузку облака или явную отправку локальной базы.':'Не подключено.'));}
-function closeSyncPanel(){document.getElementById('syncModal').style.display='none';}
-function syncHeaders(extra){const c=getSyncConfig();return Object.assign({'apikey':c.anonKey||'','Authorization':'Bearer '+(syncSession&&syncSession.access_token||''),'Content-Type':'application/json'},extra||{});}
-async function syncRefreshSession(){const c=getSyncConfig();if(!syncSession||!syncSession.refresh_token)throw new Error('Сессия истекла. Подключитесь повторно.');const r=await fetch(c.url.replace(/\/$/,'')+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'apikey':c.anonKey,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:syncSession.refresh_token})});const j=await r.json();if(!r.ok)throw new Error(j.msg||j.message||'Не удалось обновить сессию');syncSession=j;localStorage.setItem(SYNC_SESSION_KEY,JSON.stringify(j));return j;}
-async function syncRequest(path,options,canRetry=true){const c=getSyncConfig();const url=c.url.replace(/\/$/,'')+path;const opts=Object.assign({},options||{});opts.headers=syncHeaders(opts.headers);let r=await fetch(url,opts);if(r.status===401&&canRetry){await syncRefreshSession();opts.headers=syncHeaders(opts.headers);r=await fetch(url,opts);}const raw=await r.text();let data=null;try{data=raw?JSON.parse(raw):null}catch(e){data=raw;}if(!r.ok)throw new Error((data&&(data.message||data.msg||data.error_description||data.hint))||('Ошибка облака HTTP '+r.status));return data;}
-async function syncGetRow(){const rows=await syncRequest('/rest/v1/crm_state?id=eq.1&select=id,revision,data,updated_at,updated_by',{method:'GET'});return Array.isArray(rows)&&rows.length?rows[0]:null;}
-function dbHasData(x){return !!(x&&Object.keys(x).some(k=>Array.isArray(x[k])?x[k].length>0:(x[k]&&typeof x[k]==='object'?Object.keys(x[k]).length>0:false)));}
-function showSyncConflict(){syncConflict=true;syncSetStatus('КОНФЛИКТ: облачная база изменилась одновременно с локальной. Ваши локальные изменения сохранены на этом устройстве. Выберите действие ниже.');document.getElementById('syncPullBtn').style.display='inline-block';document.getElementById('syncPushBtn').style.display='inline-block';}
-async function syncConnect(){
- const url=document.getElementById('syncUrl').value.trim().replace(/\/$/,'');
- const anonKey=document.getElementById('syncAnonKey').value.trim();
- const email=document.getElementById('syncEmail').value.trim();
- const password=document.getElementById('syncPassword').value;
- if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!anonKey||!email||!password){syncSetStatus('Проверьте URL проекта, anon/publishable key, e-mail и пароль.');return;}
- localStorage.setItem(SYNC_CONFIG_KEY,JSON.stringify({url:url,anonKey:anonKey,email:email}));
- try{
-  syncSetStatus('Подключаемся к облаку…');
-  const r=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':anonKey,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})});
-  const j=await r.json();if(!r.ok)throw new Error(j.msg||j.message||j.error_description||'Ошибка входа Supabase Auth');
-  syncSession=j;localStorage.setItem(SYNC_SESSION_KEY,JSON.stringify(j));
-  const row=await syncGetRow();
-  if(!row){
-   await syncRequest('/rest/v1/crm_state',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify({id:1,revision:1,data:db,updated_at:new Date().toISOString(),updated_by:email})});
-   syncRevision=1;syncLastSynced=JSON.stringify(db);clearLocalDirty();
-   syncSetStatus('Подключено. Создана первая облачная база из данных этого устройства.');
-  }else{
-   syncRevision=Number(row.revision)||1;
-   const localText=JSON.stringify(db),cloudText=JSON.stringify({...emptyDB,...row.data});
-   if(dbHasData(db)&&localText!==cloudText){
-    const useLocal=confirm('На этом устройстве есть данные, отличающиеся от облачной базы. OK — отправить локальную базу в облако (заменить общую). Отмена — сохранить локальную копию в резерв и загрузить общую облачную базу.');
-    if(useLocal){await syncWriteAtRevision(syncRevision,db);syncLastSynced=JSON.stringify(db);clearLocalDirty();}
-    else{localStorage.setItem('partner_crm_precloud_backup_'+Date.now(),localText);db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();}
-   }else{
-    db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();
-   }
-   syncSetStatus('Подключено. Загружена облачная версия №'+syncRevision+'.');
-  }
-  syncConnected=true;syncConflict=false;document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';
-  if(syncPollTimer)clearInterval(syncPollTimer);syncPollTimer=setInterval(syncPoll,10000);
-  syncSetStatus('Синхронизация включена · версия '+syncRevision+' · проверка обновлений каждые 10 секунд.');
- }catch(e){syncConnected=false;syncSetStatus('Не удалось подключиться: '+e.message);}
-}
-async function syncWriteAtRevision(revision,snapshot){
- const c=getSyncConfig();const rows=await syncRequest('/rest/v1/crm_state?id=eq.1&revision=eq.'+encodeURIComponent(revision),{method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify({revision:revision+1,data:snapshot,updated_at:new Date().toISOString(),updated_by:c.email||'CRM'})});
- if(!Array.isArray(rows)||!rows.length)throw new Error('REVISION_CONFLICT');
- syncRevision=Number(rows[0].revision);return rows[0];
-}
-function markLocalDirty(){localStorage.setItem(SYNC_LOCAL_DIRTY_KEY,'1');}
-function clearLocalDirty(){localStorage.removeItem(SYNC_LOCAL_DIRTY_KEY);syncDirty=false;}
-function scheduleCloudPush(){markLocalDirty();if(!syncConnected)return;syncDirty=true;if(syncPushTimer)clearTimeout(syncPushTimer);syncPushTimer=setTimeout(syncPush,900);}
-async function syncPush(){
- if(!syncConnected||!syncDirty||syncConflict)return;
- const snapshot=JSON.parse(JSON.stringify(db));const snapshotText=JSON.stringify(snapshot);
- try{
-  await syncWriteAtRevision(syncRevision,snapshot);
-  syncLastSynced=snapshotText;
-  if(JSON.stringify(db)===snapshotText){clearLocalDirty();syncSetStatus('Синхронизировано · версия '+syncRevision);}
-  else{syncDirty=true;scheduleCloudPush();}
- }catch(e){
-  if(e.message==='REVISION_CONFLICT'){showSyncConflict();return;}
-  syncSetStatus('Ошибка отправки в облако: '+e.message);
- }
-}
-async function syncPoll(){
- if(!syncConnected||syncConflict)return;
- try{
-  const row=await syncGetRow();if(!row)return;
-  const rev=Number(row.revision)||1;
-  if(rev>syncRevision){
-   if(syncDirty||localStorage.getItem(SYNC_LOCAL_DIRTY_KEY)==='1'){showSyncConflict();return;}
-   db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=rev;syncLastSynced=JSON.stringify(db);clearLocalDirty();renderAll();syncSetStatus('Получены изменения из облака · версия '+syncRevision+'.');
-  }
- }catch(e){syncSetStatus('Нет связи с облаком: '+e.message);}
-}
-async function syncForcePull(){
- if(!confirm('Заменить локальные данные текущей облачной базой? Локальная копия останется в браузере только до следующего изменения. Сначала сделайте экспорт, если хотите её сохранить.'))return;
- try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');db={...emptyDB,...row.data};localStorage.setItem(KEY,JSON.stringify(db));syncRevision=Number(row.revision)||1;syncLastSynced=JSON.stringify(db);clearLocalDirty();syncConflict=false;renderAll();document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Загружена облачная версия '+syncRevision+'.');}catch(e){syncSetStatus('Не удалось загрузить облако: '+e.message);}
-}
-async function syncForcePush(){
- if(!confirm('ВНИМАНИЕ: заменить общую облачную базу всеми локальными данными этого устройства? Данные других менеджеров, которых нет здесь, могут быть потеряны. Продолжить?'))return;
- try{const row=await syncGetRow();if(!row)throw new Error('Облачная база не найдена');syncRevision=Number(row.revision)||1;const snap=JSON.parse(JSON.stringify(db));await syncWriteAtRevision(syncRevision,snap);syncLastSynced=JSON.stringify(snap);clearLocalDirty();syncConflict=false;document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';syncSetStatus('Локальная база отправлена в облако · версия '+syncRevision+'.');}catch(e){if(e.message==='REVISION_CONFLICT')showSyncConflict();else syncSetStatus('Не удалось отправить данные: '+e.message);}
-}
-async function syncAutoConnect(){const c=getSyncConfig();if(!c.url||!c.anonKey||!c.email||!localStorage.getItem(SYNC_SESSION_KEY))return;document.getElementById('syncUrl').value=c.url;document.getElementById('syncAnonKey').value=c.anonKey;document.getElementById('syncEmail').value=c.email;document.getElementById('syncPassword').value='';await syncConnect();}
-function syncDisconnect(){if(syncPollTimer)clearInterval(syncPollTimer);if(syncPushTimer)clearTimeout(syncPushTimer);syncPollTimer=null;syncPushTimer=null;syncConnected=false;syncConflict=false;syncDirty=false;syncSession=null;syncRevision=null;localStorage.removeItem(SYNC_SESSION_KEY);syncSetStatus('Отключено. Локальные данные не удалены.');document.getElementById('syncPullBtn').style.display='none';document.getElementById('syncPushBtn').style.display='none';}
-
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll();scheduleCloudSync();toast('Изменения сохранены');}
 function toast(s){let e=document.getElementById('flash');e.textContent=s;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
 const defs={
 leads:{title:'Лиды',singular:'лид',fields:[['company','Компания','text',true],['country','Страна'],['city','Город'],['contact','Контактное лицо'],['phone','Телефон'],['email','E-mail','email'],['manager','Менеджер'],['source','Откуда пришёл лид','leadSource'],['notes','Примечания','textarea']]},
@@ -501,7 +406,6 @@ function setSupplierActualPayment(encodedSupplier,month,value){
  const amount=Math.max(0,Number(value)||0);
  if(amount)db.supplierPayments[key]=amount;else delete db.supplierPayments[key];
  localStorage.setItem(KEY,JSON.stringify(db));
- markLocalDirty();scheduleCloudPush();
  toast('Фактическая оплата сохранена');
 }
 function renderOrders(){
@@ -875,10 +779,159 @@ function checkTaskReminders(){
  if(!('Notification' in window)||Notification.permission!=='granted')return;
  const now=Date.now();let changed=false;
  db.tasks.forEach(t=>{if(!t.reminderAt||t.reminderSent||t.status==='Выполнена')return;const at=new Date(t.reminderAt).getTime();if(Number.isFinite(at)&&at<=now){new Notification('Напоминание о задаче',{body:(t.title||'Задача')+' · '+taskEntityName(t)});t.reminderSent=true;changed=true;}});
- if(changed){localStorage.setItem(KEY,JSON.stringify(db));markLocalDirty();scheduleCloudPush();}
+ if(changed){localStorage.setItem(KEY,JSON.stringify(db));scheduleCloudSync();}
 }
 setInterval(checkTaskReminders,20000);checkTaskReminders();
+
+// ===== Облачная синхронизация Supabase =====
+const CLOUD_SESSION_KEY='partner_crm_cloud_session_v1';
+const CLOUD_CONFIG_KEY='partner_crm_cloud_config_v1';
+let cloudSession=null, cloudConfig=null, cloudUpdatedAt=null;
+let cloudPollTimer=null, cloudSaveTimer=null, cloudBusy=false, cloudDirty=false;
+function cloudStatus(text,color='#d9e8f7'){
+ const el=document.getElementById('cloudSyncStatus');
+ if(el){el.textContent='☁ '+text;el.style.color=color;}
+}
+function readCloudSession(){
+ try{cloudSession=JSON.parse(localStorage.getItem(CLOUD_SESSION_KEY)||'null');}catch(e){cloudSession=null;}
+ try{cloudConfig=JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY)||'null');}catch(e){cloudConfig=null;}
+}
+async function cloudRefreshToken(){
+ if(!cloudSession||!cloudSession.refreshToken)throw new Error('Сессия истекла. Войдите снова.');
+ const r=await fetch(cloudConfig.url+'/auth/v1/token?grant_type=refresh_token',{
+  method:'POST',headers:{'Content-Type':'application/json','apikey':cloudConfig.anonKey},
+  body:JSON.stringify({refresh_token:cloudSession.refreshToken})
+ });
+ const s=await r.json();
+ if(!r.ok||!s.access_token)throw new Error('Не удалось обновить сессию. Войдите снова.');
+ cloudSession={accessToken:s.access_token,refreshToken:s.refresh_token,
+  expiresAt:Date.now()+(Number(s.expires_in)||3600)*1000,user:s.user||cloudSession.user};
+ localStorage.setItem(CLOUD_SESSION_KEY,JSON.stringify(cloudSession));
+}
+async function cloudHeaders(extra={}){
+ if(!cloudSession||!cloudConfig)throw new Error('Нет облачной сессии');
+ if(!cloudSession.expiresAt||Date.now()>cloudSession.expiresAt-60000)await cloudRefreshToken();
+ return {...extra,'apikey':cloudConfig.anonKey,'Authorization':'Bearer '+cloudSession.accessToken};
+}
+async function cloudFetch(path,options={}){
+ const headers=await cloudHeaders({'Content-Type':'application/json',...(options.headers||{})});
+ const response=await fetch(cloudConfig.url+path,{...options,headers});
+ if(response.status===401){throw new Error('Сессия Supabase истекла. Войдите снова.');}
+ const body=await response.text();
+ if(!response.ok)throw new Error('Supabase: '+body.slice(0,350));
+ return body?JSON.parse(body):null;
+}
+async function getCloudRow(){
+ const rows=await cloudFetch('/rest/v1/partner_crm_data?id=eq.shared&select=id,payload,updated_at');
+ return Array.isArray(rows)&&rows.length?rows[0]:null;
+}
+function applyCloudPayload(row){
+ if(!row||!row.payload)return;
+ db={...emptyDB,...row.payload};
+ if(!Array.isArray(db.leads))db.leads=[];
+ if(!Array.isArray(db.clients))db.clients=[];
+ if(!Array.isArray(db.suppliers))db.suppliers=[];
+ if(!Array.isArray(db.actions))db.actions=[];
+ if(!Array.isArray(db.activities))db.activities=[];
+ if(!Array.isArray(db.orders))db.orders=[];
+ if(!Array.isArray(db.tasks))db.tasks=[];
+ if(!db.supplierPayments||typeof db.supplierPayments!=='object')db.supplierPayments={};
+ cloudUpdatedAt=row.updated_at||null;
+ cloudDirty=false;
+ localStorage.setItem(KEY,JSON.stringify(db));
+ renderAll();
+}
+async function writeCloudPayload(expectedUpdatedAt,force=false){
+ const payload={payload:db,updated_by:cloudSession?.user?.id||null};
+ if(!expectedUpdatedAt){
+  const created=await cloudFetch('/rest/v1/partner_crm_data',{
+   method:'POST',headers:{'Prefer':'return=representation'},
+   body:JSON.stringify({id:'shared',...payload})
+  });
+  const row=Array.isArray(created)?created[0]:created;
+  cloudUpdatedAt=row?.updated_at||null;cloudDirty=false;return;
+ }
+ const filter=force?'':'&updated_at=eq.'+encodeURIComponent(expectedUpdatedAt);
+ const updated=await cloudFetch('/rest/v1/partner_crm_data?id=eq.shared'+filter,{
+  method:'PATCH',headers:{'Prefer':'return=representation'},
+  body:JSON.stringify(payload)
+ });
+ if(!Array.isArray(updated)||!updated.length)return false;
+ cloudUpdatedAt=updated[0].updated_at||null;cloudDirty=false;return true;
+}
+async function syncCloudNow(){
+ if(cloudBusy||!cloudDirty||!cloudSession)return;
+ cloudBusy=true;cloudStatus('Синхронизация…');
+ try{
+  const latest=await getCloudRow();
+  if(latest&&latest.updated_at!==cloudUpdatedAt){
+   const keepLocal=confirm('На другом устройстве CRM уже изменили данные. Нажмите ОК, чтобы загрузить облачную версию. Нажмите Отмена, чтобы сохранить текущую версию этого устройства поверх облачной.');
+   if(keepLocal){applyCloudPayload(latest);cloudStatus('Обновлено из облака');return;}
+   cloudUpdatedAt=latest.updated_at;
+  }
+  const ok=await writeCloudPayload(cloudUpdatedAt);
+  if(ok===false){
+   const newest=await getCloudRow();
+   if(newest){applyCloudPayload(newest);cloudStatus('Загружена последняя версия');}
+  }else cloudStatus('Синхронизировано · '+new Date().toLocaleTimeString('ru-RU'));
+ }catch(e){
+  cloudStatus('Ошибка синхронизации','#ffb4aa');
+  console.error(e);
+  if(/Войдите снова|истекла/i.test(e.message||'')){
+   stopCloudSync();document.body.classList.remove('crm-authenticated');
+   document.getElementById('crmLoginGate').style.display='flex';
+   document.getElementById('crmLoginError').textContent=e.message;
+   document.getElementById('crmLoginError').style.display='block';
+  }
+ }finally{cloudBusy=false;}
+}
+function scheduleCloudSync(){
+ if(!cloudSession)return;
+ cloudDirty=true;
+ clearTimeout(cloudSaveTimer);
+ cloudSaveTimer=setTimeout(syncCloudNow,900);
+}
+async function pollCloud(){
+ if(!cloudSession||cloudBusy)return;
+ try{
+  const row=await getCloudRow();
+  if(!row)return;
+  if(row.updated_at!==cloudUpdatedAt){
+   if(cloudDirty){
+    const keepLocal=confirm('Обнаружены изменения с другого устройства. ОК — загрузить их. Отмена — оставить текущие изменения и отправить их в облако.');
+    if(keepLocal){applyCloudPayload(row);cloudStatus('Обновлено из облака');}
+    else{cloudUpdatedAt=row.updated_at;await syncCloudNow();}
+   }else{applyCloudPayload(row);cloudStatus('Получено обновление · '+new Date().toLocaleTimeString('ru-RU'));}
+  }else if(cloudDirty)await syncCloudNow();
+ }catch(e){cloudStatus('Нет связи · повтор через 10 сек','#ffcf80');console.warn(e);}
+}
+async function startCloudSync(){
+ readCloudSession();
+ if(!cloudSession||!cloudConfig){cloudStatus('Требуется вход','#ffcf80');return;}
+ cloudStatus('Подключение…');
+ try{
+  const row=await getCloudRow();
+  if(row){applyCloudPayload(row);cloudStatus('Подключено · '+new Date().toLocaleTimeString('ru-RU'));}
+  else{
+   cloudUpdatedAt=null;
+   await writeCloudPayload(null);
+   cloudStatus('База создана · синхронизировано');
+  }
+  if(cloudPollTimer)clearInterval(cloudPollTimer);
+  cloudPollTimer=setInterval(pollCloud,10000);
+ }catch(e){
+  cloudStatus('Ошибка подключения','#ffb4aa');
+  document.body.classList.remove('crm-authenticated');
+  document.getElementById('crmLoginGate').style.display='flex';
+  document.getElementById('crmLoginError').textContent='Не удалось открыть общую базу: '+e.message;
+  document.getElementById('crmLoginError').style.display='block';
+ }
+}
+function stopCloudSync(){
+ if(cloudPollTimer)clearInterval(cloudPollTimer);
+ clearTimeout(cloudSaveTimer);cloudPollTimer=null;cloudSaveTimer=null;
+}
+
 renderAll();
-if(localStorage.getItem(SYNC_SESSION_KEY))setTimeout(syncAutoConnect,700);
 </script>
 </body></html>
