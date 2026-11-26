@@ -416,6 +416,7 @@ function setSupplierActualPayment(encodedSupplier,month,value){
  const amount=Math.max(0,Number(value)||0);
  if(amount)db.supplierPayments[key]=amount;else delete db.supplierPayments[key];
  localStorage.setItem(KEY,JSON.stringify(db));
+ scheduleCloudSync();
  toast('Фактическая оплата сохранена');
 }
 function renderOrders(){
